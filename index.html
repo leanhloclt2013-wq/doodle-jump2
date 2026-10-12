@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doodle Jump trên GitHub</title>
+    <style>
+        body {
+            background-color: #202020;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        canvas {
+            border: 4px solid #fff;
+            background-color: #f7f7f7;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        p {
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>DOODLE JUMP</h1>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+    <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.</p>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let score = 0;
+        let isGameOver = false;
+
+        // Nhân vật (Doodler)
+        let player = {
+            x: 180,
+            y: 350,
+            width: 40,
+            height: 40,
+            vx: 0,
+            vy: 0
+        };
+
+        // Danh sách các thanh nhảy (Platforms)
+        let platforms = [];
+        const platformWidth = 70;
+        const platformHeight = 15;
+        let platformCount = 6;
+
+        // Phím bấm
+        let keys = {};
+        window.addEventListener("keydown", e => keys[e.code] = true);
+        window.addEventListener("keyup", e => keys[e.code] = false);
+
+        // Khởi tạo các thanh nhảy ban đầu
+        function initPlatforms() {
+            platforms = [];
+            for (let i = 0; i < platformCount; i++) {
+                let pY = canvas.height - (i * 80) - 50;
+                platforms.push({
+                    x: Math.random() * (canvas.width - platformWidth),
+                    y: pY
+                });
+            }
+        }
+
+        // Bắt đầu lại game
+        function resetGame() {
+            score = 0;
+            isGameOver = false;
+            player.x = 180;
+            player.y = 350;
+            player.vx = 0;
+            player.vy = 0;
+            initPlatforms();
+        }
+
+        // Cập nhật logic game
+        function update() {
+            if (isGameOver) return;
+
+            // Di chuyển trái/phải
+            if (keys["ArrowLeft"] || keys["KeyA"]) {
+                player.vx = -5;
+            } else if (keys["ArrowRight"] || keys["KeyD"]) {
+                player.vx = 5;
+            } else {
+                player.vx *= 0.8; // Hiệu ứng trượt nhẹ
+            }
+
+            player.x += player.vx;
+
+            // Xuyên màn hình trái/phải
+            if (player.x > canvas.width) player.x = -player.width;
+            if (player.x < -player.width) player.x = canvas.width;
+
+            // Trọng lực kéo nhân vật xuống
+            player.vy += 0.35;
+            player.y += player.vy;
+
+            // Xử lý khi nhân vật chạm đỉnh màn hình -> Cuộn cảnh xuống
+            if (player.y < canvas.height / 2) {
+                let diff = canvas.height / 2 - player.y;
+                player.y = canvas.height / 2;
+                platforms.forEach(p => {
+                    p.y += diff;
+                });
+                score += Math.floor(diff);
+            }
+
+            // Va chạm với các thanh nhảy (chỉ khi đang rơi xuống)
+            if (player.vy > 0) {
+                platforms.forEach(p => {
+                    if (
+                        player.x + player.width > p.x &&
+                        player.x < p.x + platformWidth &&
+                        player.y + player.height >= p.y &&
+                        player.y + player.height <= p.y + platformHeight + player.vy
+                    ) {
+                        player.vy = -10; // Lực nảy lên
+                    }
+                });
+            }
+
+            // Tạo thanh nhảy mới phía trên khi thanh cũ trôi xuống dưới
+            platforms.forEach(p => {
+                if (p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * (canvas.width - platformWidth);
+                }
+            });
+
+            // Kiểm tra thua (rơi xuống đáy)
+            if (player.y > canvas.height) {
+                isGameOver = true;
+            }
+        }
+
+        // Vẽ đồ họa lên màn hình
+        function draw() {
+            // Xóa màn hình cũ
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Vẽ các thanh nhảy (màu xanh lá)
+            ctx.fillStyle = "#4CAF50";
+            platforms.forEach(p => {
+                ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
+            });
+
+            // Vẽ nhân vật (màu cam)
+            ctx.fillStyle = "#FF5722";
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+
+            // Hiển thị điểm số
+            ctx.fillStyle = "#000";
+            ctx.font = "18px Arial";
+            ctx.fillText("Điểm: " + score, 15, 25);
+
+            // Nếu thua, hiển thị màn hình Game Over
+            if (isGameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#FFF";
+                ctx.font = "30px Arial";
+                ctx.fillText("GAME OVER", 100, 220);
+                
+                ctx.font = "16px Arial";
+                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 75, 270);
+            }
+        }
+
+        // Vòng lặp game (Game Loop)
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Phím chơi lại
+        window.addEventListener("keydown", e => {
+            if (e.code === "Space" && isGameOver) {
+                resetGame();
+            }
+        });
+
+        // Khởi động game
+        initPlatforms();
+        loop();
+    </script>
+</body>
+</html>
