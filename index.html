@@ -36,10 +36,10 @@
         let score = 0;
         let isGameOver = false;
 
-        // Nhân vật (Doodler)
+        // Nhân vật (Doodler) - Đặt vị trí ban đầu đứng vững trên thanh đầu tiên
         let player = {
             x: 180,
-            y: 350,
+            y: 360,
             width: 40,
             height: 40,
             vx: 0,
@@ -48,7 +48,7 @@
 
         // Danh sách các thanh nhảy (Platforms)
         let platforms = [];
-        const platformWidth = 70;
+        const platformWidth = 80;
         const platformHeight = 15;
         let platformCount = 6;
 
@@ -57,11 +57,18 @@
         window.addEventListener("keydown", e => keys[e.code] = true);
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Khởi tạo các thanh nhảy ban đầu
+        // Khởi tạo các thanh nhảy ban đầu (Thanh đầu tiên nằm ngay dưới chân nhân vật)
         function initPlatforms() {
             platforms = [];
-            for (let i = 0; i < platformCount; i++) {
-                let pY = canvas.height - (i * 80) - 50;
+            // Thanh đầu tiên đỡ nhân vật ngay khi vào game
+            platforms.push({
+                x: 160,
+                y: 400
+            });
+
+            // Các thanh phía trên
+            for (let i = 1; i < platformCount; i++) {
+                let pY = 400 - (i * 75);
                 platforms.push({
                     x: Math.random() * (canvas.width - platformWidth),
                     y: pY
@@ -74,23 +81,23 @@
             score = 0;
             isGameOver = false;
             player.x = 180;
-            player.y = 350;
+            player.y = 360;
             player.vx = 0;
             player.vy = 0;
             initPlatforms();
         }
 
-        // Cập nhật logic game
+        // Cập nhật logic game (Tốc độ chậm và mượt hơn)
         function update() {
             if (isGameOver) return;
 
-            // Di chuyển trái/phải
+            // Di chuyển trái/phải mượt mà hơn
             if (keys["ArrowLeft"] || keys["KeyA"]) {
-                player.vx = -5;
+                player.vx = -4;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
-                player.vx = 5;
+                player.vx = 4;
             } else {
-                player.vx *= 0.8; // Hiệu ứng trượt nhẹ
+                player.vx *= 0.8; 
             }
 
             player.x += player.vx;
@@ -99,8 +106,8 @@
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
-            // Trọng lực kéo nhân vật xuống
-            player.vy += 0.35;
+            // Trọng lực kéo nhân vật xuống (giảm nhẹ để game chậm lại)
+            player.vy += 0.25;
             player.y += player.vy;
 
             // Xử lý khi nhân vật chạm đỉnh màn hình -> Cuộn cảnh xuống
@@ -110,7 +117,7 @@
                 platforms.forEach(p => {
                     p.y += diff;
                 });
-                score += Math.floor(diff);
+                score += Math.floor(diff * 0.5); // Tăng điểm chậm hơn tương ứng tốc độ game
             }
 
             // Va chạm với các thanh nhảy (chỉ khi đang rơi xuống)
@@ -122,7 +129,7 @@
                         player.y + player.height >= p.y &&
                         player.y + player.height <= p.y + platformHeight + player.vy
                     ) {
-                        player.vy = -10; // Lực nảy lên
+                        player.vy = -8.5; // Lực nảy nhẹ nhàng hơn
                     }
                 });
             }
@@ -143,7 +150,6 @@
 
         // Vẽ đồ họa lên màn hình
         function draw() {
-            // Xóa màn hình cũ
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Vẽ các thanh nhảy (màu xanh lá)
