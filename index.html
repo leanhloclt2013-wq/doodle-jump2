@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump trên GitHub</title>
+    <title>Doodle Jump - Man Face Edition</title>
     <style>
         body {
             background-color: #202020;
@@ -25,9 +25,10 @@
     </style>
 </head>
 <body>
-    <h1>DOODLE JUMP</h1>
+    <h1>DOODLE JUMP: MAN FACE</h1>
     <canvas id="gameCanvas" width="400" height="550"></canvas>
-    <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.</p>
+    <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
+    <span style="color: #ff5252;">⚠️ Cảnh báo (>500 điểm): Tránh thanh màu Đỏ (Bẫy) và cẩn thận thanh màu Nâu (Gãy)!</span></p>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -40,13 +41,14 @@
         let player = {
             x: 180,
             y: 420,
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             vx: 0,
             vy: 0
         };
 
         // Danh sách các thanh nhảy (Platforms)
+        // type: 'normal' (thường), 'break' (gãy), 'trap' (bẫy)
         let platforms = [];
         const platformWidth = 85;
         const platformHeight = 15;
@@ -57,21 +59,39 @@
         window.addEventListener("keydown", e => keys[e.code] = true);
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Khởi tạo các thanh nhảy an toàn, khoảng cách đều nhau vừa tầm nhảy
+        // Tạo loại thanh nhảy dựa trên điểm số
+        function getRandomPlatformType() {
+            if (score < 500) return 'normal';
+            
+            let rand = Math.random();
+            if (score >= 500 && score < 1000) {
+                // Xuất hiện thanh gãy (30%), còn lại thanh thường
+                if (rand < 0.3) return 'break';
+            } else if (score >= 1000) {
+                // Cả thanh gãy (25%) và thanh bẫy (20%)
+                if (rand < 0.25) return 'break';
+                else if (rand < 0.45) return 'trap';
+            }
+            return 'normal';
+        }
+
+        // Khởi tạo các thanh nhảy ban đầu
         function initPlatforms() {
             platforms = [];
-            // Thanh đỡ đầu tiên ngay dưới chân khi bắt đầu
             platforms.push({
                 x: 160,
-                y: 470
+                y: 470,
+                type: 'normal',
+                broken: false
             });
 
-            // Các thanh phía trên với khoảng cách chiều dọc vừa phải, không bị quá xa
             for (let i = 1; i < platformCount; i++) {
                 let pY = 470 - (i * 70);
                 platforms.push({
                     x: Math.random() * (canvas.width - platformWidth),
-                    y: pY
+                    y: pY,
+                    type: 'normal',
+                    broken: false
                 });
             }
         }
@@ -87,11 +107,10 @@
             initPlatforms();
         }
 
-        // Cập nhật logic game (Tốc độ rất chậm, dễ chơi)
+        // Cập nhật logic game
         function update() {
             if (isGameOver) return;
 
-            // Di chuyển trái/phải mượt và vừa phải
             if (keys["ArrowLeft"] || keys["KeyA"]) {
                 player.vx = -3.5;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
@@ -102,15 +121,12 @@
 
             player.x += player.vx;
 
-            // Xuyên màn hình trái/phải
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
-            // Trọng lực siêu nhẹ giúp game chậm rãi
             player.vy += 0.2;
             player.y += player.vy;
 
-            // Xử lý khi nhân vật chạm nửa trên màn hình -> Cuộn cảnh xuống
             if (player.y < canvas.height / 2) {
                 let diff = canvas.height / 2 - player.y;
                 player.y = canvas.height / 2;
@@ -120,82 +136,156 @@
                 score += Math.floor(diff * 0.3); 
             }
 
-            // Va chạm với các thanh nhảy (lực nảy vừa đủ để nhảy qua các thanh kế tiếp)
+            // Va chạm với các thanh nhảy (chỉ khi đang rơi)
             if (player.vy > 0) {
                 platforms.forEach(p => {
                     if (
+                        !p.broken &&
                         player.x + player.width > p.x &&
                         player.x < p.x + platformWidth &&
                         player.y + player.height >= p.y &&
                         player.y + player.height <= p.y + platformHeight + player.vy
                     ) {
-                        player.vy = -7.5; 
+                        if (p.type === 'trap') {
+                            // Chạm thanh bẫy -> Thua ngay lập tức
+                            isGameOver = true;
+                        } else if (p.type === 'break') {
+                            // Chạm thanh gãy -> Thanh vỡ, không nảy lên được
+                            p.broken = true;
+                        } else {
+                            // Thanh thường -> Nảy lên
+                            player.vy = -7.5; 
+                        }
                     }
                 });
             }
 
-            // Tái tạo thanh nhảy mới phía trên khi thanh cũ trôi xuống đáy
+            // Tái tạo thanh nhảy mới phía trên
             platforms.forEach(p => {
                 if (p.y > canvas.height) {
                     p.y = 0;
                     p.x = Math.random() * (canvas.width - platformWidth);
+                    p.type = getRandomPlatformType();
+                    p.broken = false;
                 }
             });
 
-            // Kiểm tra thua (rơi xuống đáy)
             if (player.y > canvas.height) {
                 isGameOver = true;
             }
+        }
+
+        // Vẽ khuôn mặt "Man Face" biểu cảm
+        function drawManFace(x, y, w, h) {
+            let cx = x + w / 2;
+            let cy = y + h / 2;
+
+            // Nền vàng đặc trưng của Man Face
+            ctx.fillStyle = "#FFD700";
+            ctx.strokeStyle = "#B8860B";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Mày xếch ngược đặc trưng
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2.5;
+            // Mày trái
+            ctx.beginPath();
+            ctx.moveTo(cx - 12, cy - 8);
+            ctx.lineTo(cx - 3, cy - 14);
+            ctx.stroke();
+            // Mày phải
+            ctx.beginPath();
+            ctx.moveTo(cx + 3, cy - 14);
+            ctx.lineTo(cx + 12, cy - 8);
+            ctx.stroke();
+
+            // Mắt (chấm đen láu cá)
+            ctx.fillStyle = "#000";
+            ctx.beginPath();
+            ctx.arc(cx - 7, cy - 3, 2.5, 0, Math.PI * 2);
+            ctx.arc(cx + 7, cy - 3, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nụ cười nhếch mép (Man Face smirk)
+            ctx.beginPath();
+            ctx.lineWidth = 2;
+            ctx.arc(cx + 1, cy + 8, 10, 0.2, Math.PI - 0.2, false);
+            ctx.stroke();
         }
 
         // Vẽ đồ họa lên màn hình
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Vẽ các thanh nhảy (màu xanh lá)
-            ctx.fillStyle = "#4CAF50";
+            // Vẽ các thanh nhảy
             platforms.forEach(p => {
+                if (p.broken) return; // Nếu thanh đã gãy thì không vẽ
+
+                if (p.type === 'normal') {
+                    ctx.fillStyle = "#4CAF50"; // Xanh lá
+                } else if (p.type === 'break') {
+                    ctx.fillStyle = "#8D6E63"; // Nâu gỗ (Thanh gãy)
+                } else if (p.type === 'trap') {
+                    ctx.fillStyle = "#F44336"; // Đỏ (Thanh bẫy)
+                }
+
                 ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
+                
+                // Viền cho các thanh đặc biệt để dễ nhận diện
+                if (p.type === 'break' || p.type === 'trap') {
+                    ctx.strokeStyle = "#333";
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(p.x, p.y, platformWidth, platformHeight);
+                }
             });
 
-            // Vẽ nhân vật (màu cam)
-            ctx.fillStyle = "#FF5722";
-            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Vẽ nhân vật Man Face
+            drawManFace(player.x, player.y, player.width, player.height);
 
-            // Hiển thị điểm số
+            // Hiển thị điểm số & thông báo
             ctx.fillStyle = "#000";
             ctx.font = "18px Arial";
             ctx.fillText("Điểm: " + score, 15, 25);
 
-            // Nếu thua, hiển thị màn hình Game Over
+            if (score >= 500) {
+                ctx.fillStyle = "#d32f2f";
+                ctx.font = "13px Arial";
+                ctx.fillText("⚠️ CẨN THẬN: Nâu = Gãy | Đỏ = Bẫy!", 15, 48);
+            }
+
+            // Màn hình Game Over
             if (isGameOver) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 ctx.fillStyle = "#FFF";
                 ctx.font = "30px Arial";
-                ctx.fillText("GAME OVER", 105, 240);
+                ctx.fillText("GAME OVER", 105, 220);
                 
+                ctx.font = "16px Arial";
+                ctx.fillText("Điểm đạt được: " + score, 130, 255);
+
                 ctx.font = "15px Arial";
-                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 75, 290);
+                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 75, 295);
             }
         }
 
-        // Vòng lặp game
         function loop() {
             update();
             draw();
             requestAnimationFrame(loop);
         }
 
-        // Phím chơi lại
         window.addEventListener("keydown", e => {
             if (e.code === "Space" && isGameOver) {
                 resetGame();
             }
         });
 
-        // Khởi động game
         initPlatforms();
         loop();
     </script>
