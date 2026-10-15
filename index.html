@@ -28,7 +28,7 @@
     <h1>DOODLE JUMP: MAN FACE</h1>
     <canvas id="gameCanvas" width="400" height="550"></canvas>
     <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
-    <span style="color: #ff5252;">⚠️ Cảnh báo (>500 điểm): Tránh thanh màu Đỏ (Bẫy) và cẩn thận thanh màu Nâu (Gãy)!</span></p>
+    <span style="color: #ff5252;">⚠️ Cảnh báo (>200 điểm): Tránh thanh màu Đỏ (Bẫy) và cẩn thận thanh màu Nâu (Gãy)!</span></p>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -48,7 +48,6 @@
         };
 
         // Danh sách các thanh nhảy (Platforms)
-        // type: 'normal' (thường), 'break' (gãy), 'trap' (bẫy)
         let platforms = [];
         const platformWidth = 85;
         const platformHeight = 15;
@@ -59,15 +58,15 @@
         window.addEventListener("keydown", e => keys[e.code] = true);
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Tạo loại thanh nhảy dựa trên điểm số
+        // Tạo loại thanh nhảy dựa trên điểm số (Đã đổi mốc thành 200 điểm)
         function getRandomPlatformType() {
-            if (score < 500) return 'normal';
+            if (score < 200) return 'normal';
             
             let rand = Math.random();
-            if (score >= 500 && score < 1000) {
+            if (score >= 200 && score < 600) {
                 // Xuất hiện thanh gãy (30%), còn lại thanh thường
                 if (rand < 0.3) return 'break';
-            } else if (score >= 1000) {
+            } else if (score >= 600) {
                 // Cả thanh gãy (25%) và thanh bẫy (20%)
                 if (rand < 0.25) return 'break';
                 else if (rand < 0.45) return 'trap';
@@ -111,10 +110,11 @@
         function update() {
             if (isGameOver) return;
 
+            // Tăng nhẹ tốc độ di chuyển ngang
             if (keys["ArrowLeft"] || keys["KeyA"]) {
-                player.vx = -3.5;
+                player.vx = -4.0;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
-                player.vx = 3.5;
+                player.vx = 4.0;
             } else {
                 player.vx *= 0.8; 
             }
@@ -124,7 +124,7 @@
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
-            player.vy += 0.2;
+            player.vy += 0.22; // Tăng nhẹ trọng lực rơi để game nhanh hơn một chút
             player.y += player.vy;
 
             if (player.y < canvas.height / 2) {
@@ -147,14 +147,12 @@
                         player.y + player.height <= p.y + platformHeight + player.vy
                     ) {
                         if (p.type === 'trap') {
-                            // Chạm thanh bẫy -> Thua ngay lập tức
                             isGameOver = true;
                         } else if (p.type === 'break') {
-                            // Chạm thanh gãy -> Thanh vỡ, không nảy lên được
                             p.broken = true;
                         } else {
-                            // Thanh thường -> Nảy lên
-                            player.vy = -7.5; 
+                            // Tăng nhẹ lực nảy lên (-8.0 thay vì -7.5) giúp game nhanh và cuốn hơn
+                            player.vy = -8.0; 
                         }
                     }
                 });
@@ -180,7 +178,6 @@
             let cx = x + w / 2;
             let cy = y + h / 2;
 
-            // Nền vàng đặc trưng của Man Face
             ctx.fillStyle = "#FFD700";
             ctx.strokeStyle = "#B8860B";
             ctx.lineWidth = 2;
@@ -189,28 +186,23 @@
             ctx.fill();
             ctx.stroke();
 
-            // Mày xếch ngược đặc trưng
             ctx.strokeStyle = "#000";
             ctx.lineWidth = 2.5;
-            // Mày trái
             ctx.beginPath();
             ctx.moveTo(cx - 12, cy - 8);
             ctx.lineTo(cx - 3, cy - 14);
             ctx.stroke();
-            // Mày phải
             ctx.beginPath();
             ctx.moveTo(cx + 3, cy - 14);
             ctx.lineTo(cx + 12, cy - 8);
             ctx.stroke();
 
-            // Mắt (chấm đen láu cá)
             ctx.fillStyle = "#000";
             ctx.beginPath();
             ctx.arc(cx - 7, cy - 3, 2.5, 0, Math.PI * 2);
             ctx.arc(cx + 7, cy - 3, 2.5, 0, Math.PI * 2);
             ctx.fill();
 
-            // Nụ cười nhếch mép (Man Face smirk)
             ctx.beginPath();
             ctx.lineWidth = 2;
             ctx.arc(cx + 1, cy + 8, 10, 0.2, Math.PI - 0.2, false);
@@ -221,21 +213,19 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Vẽ các thanh nhảy
             platforms.forEach(p => {
-                if (p.broken) return; // Nếu thanh đã gãy thì không vẽ
+                if (p.broken) return;
 
                 if (p.type === 'normal') {
-                    ctx.fillStyle = "#4CAF50"; // Xanh lá
+                    ctx.fillStyle = "#4CAF50";
                 } else if (p.type === 'break') {
-                    ctx.fillStyle = "#8D6E63"; // Nâu gỗ (Thanh gãy)
+                    ctx.fillStyle = "#8D6E63";
                 } else if (p.type === 'trap') {
-                    ctx.fillStyle = "#F44336"; // Đỏ (Thanh bẫy)
+                    ctx.fillStyle = "#F44336";
                 }
 
                 ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
                 
-                // Viền cho các thanh đặc biệt để dễ nhận diện
                 if (p.type === 'break' || p.type === 'trap') {
                     ctx.strokeStyle = "#333";
                     ctx.lineWidth = 1;
@@ -243,21 +233,18 @@
                 }
             });
 
-            // Vẽ nhân vật Man Face
             drawManFace(player.x, player.y, player.width, player.height);
 
-            // Hiển thị điểm số & thông báo
             ctx.fillStyle = "#000";
             ctx.font = "18px Arial";
             ctx.fillText("Điểm: " + score, 15, 25);
 
-            if (score >= 500) {
+            if (score >= 200) {
                 ctx.fillStyle = "#d32f2f";
                 ctx.font = "13px Arial";
                 ctx.fillText("⚠️ CẨN THẬN: Nâu = Gãy | Đỏ = Bẫy!", 15, 48);
             }
 
-            // Màn hình Game Over
             if (isGameOver) {
                 ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
