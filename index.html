@@ -26,7 +26,8 @@
 </head>
 <body>
     <h1>DOODLE JUMP: MAN FACE</h1>
-    <canvas id="gameCanvas" width="400" height="550"></canvas>
+    <!-- Đã mở rộng chiều rộng canvas từ 400 lên 480 -->
+    <canvas id="gameCanvas" width="480" height="550"></canvas>
     <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
     <span style="color: #ff5252;">⚠️ Cảnh báo (>200 điểm): Tránh thanh màu Đỏ (Bẫy) và cẩn thận thanh màu Nâu (Gãy)!</span></p>
 
@@ -39,7 +40,7 @@
 
         // Nhân vật (Doodler)
         let player = {
-            x: 180,
+            x: 218, // Canh giữa màn hình rộng 480
             y: 420,
             width: 44,
             height: 44,
@@ -51,25 +52,27 @@
         let platforms = [];
         const platformWidth = 85;
         const platformHeight = 15;
-        let platformCount = 7;
+        let platformCount = 8; // Tăng số lượng thanh trên màn hình lên 8 cho phong phú
 
         // Phím bấm
         let keys = {};
         window.addEventListener("keydown", e => keys[e.code] = true);
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Tạo loại thanh nhảy dựa trên điểm số (Đã đổi mốc thành 200 điểm)
-        function getRandomPlatformType() {
+        // Lấy loại thanh nhảy thông minh (Không bao giờ tạo 2 thanh nguy hiểm liên tiếp)
+        function getRandomPlatformType(lastType) {
             if (score < 200) return 'normal';
             
+            if (lastType === 'break' || lastType === 'trap') {
+                return 'normal';
+            }
+
             let rand = Math.random();
-            if (score >= 200 && score < 600) {
-                // Xuất hiện thanh gãy (30%), còn lại thanh thường
-                if (rand < 0.3) return 'break';
-            } else if (score >= 600) {
-                // Cả thanh gãy (25%) và thanh bẫy (20%)
-                if (rand < 0.25) return 'break';
-                else if (rand < 0.45) return 'trap';
+            if (score >= 200 && score < 500) {
+                if (rand < 0.15) return 'break';
+            } else if (score >= 500) {
+                if (rand < 0.20) return 'break';
+                else if (rand < 0.35) return 'trap';
             }
             return 'normal';
         }
@@ -78,20 +81,30 @@
         function initPlatforms() {
             platforms = [];
             platforms.push({
-                x: 160,
+                x: 197, // Ngay dưới chân nhân vật
                 y: 470,
                 type: 'normal',
                 broken: false
             });
 
+            let prevType = 'normal';
             for (let i = 1; i < platformCount; i++) {
-                let pY = 470 - (i * 70);
+                let pY = 470 - (i * 65);
+                let type = getRandomPlatformType(prevType);
+                
+                // Tránh để các thanh quá xa nhau về chiều ngang, giúp dễ nhảy tới
+                let prevX = platforms[i - 1].x;
+                let minX = Math.max(0, prevX - 150);
+                let maxX = Math.min(canvas.width - platformWidth, prevX + 150);
+                let pX = minX + Math.random() * (maxX - minX);
+
                 platforms.push({
-                    x: Math.random() * (canvas.width - platformWidth),
+                    x: pX,
                     y: pY,
-                    type: 'normal',
+                    type: type,
                     broken: false
                 });
+                prevType = type;
             }
         }
 
@@ -99,7 +112,7 @@
         function resetGame() {
             score = 0;
             isGameOver = false;
-            player.x = 180;
+            player.x = 218;
             player.y = 420;
             player.vx = 0;
             player.vy = 0;
@@ -110,11 +123,11 @@
         function update() {
             if (isGameOver) return;
 
-            // Tăng nhẹ tốc độ di chuyển ngang
+            // Tăng nhẹ tốc độ di chuyển ngang cho tương ứng với màn hình rộng hơn
             if (keys["ArrowLeft"] || keys["KeyA"]) {
-                player.vx = -4.0;
+                player.vx = -4.8;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
-                player.vx = 4.0;
+                player.vx = 4.8;
             } else {
                 player.vx *= 0.8; 
             }
@@ -124,7 +137,7 @@
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
-            player.vy += 0.22; // Tăng nhẹ trọng lực rơi để game nhanh hơn một chút
+            player.vy += 0.22; 
             player.y += player.vy;
 
             if (player.y < canvas.height / 2) {
@@ -151,7 +164,6 @@
                         } else if (p.type === 'break') {
                             p.broken = true;
                         } else {
-                            // Tăng nhẹ lực nảy lên (-8.0 thay vì -7.5) giúp game nhanh và cuốn hơn
                             player.vy = -8.0; 
                         }
                     }
@@ -161,9 +173,19 @@
             // Tái tạo thanh nhảy mới phía trên
             platforms.forEach(p => {
                 if (p.y > canvas.height) {
-                    p.y = 0;
-                    p.x = Math.random() * (canvas.width - platformWidth);
-                    p.type = getRandomPlatformType();
+                    let minY = Math.min(...platforms.map(item => item.y));
+                    let highestPlatform = platforms.find(item => item.y === minY);
+                    let lastType = highestPlatform ? highestPlatform.type : 'normal';
+                    let lastX = highestPlatform ? highestPlatform.x : canvas.width / 2;
+
+                    // Giới hạn vị trí ngang của thanh mới không bị lệch quá xa so với thanh trước đó
+                    let minX = Math.max(0, lastX - 160);
+                    let maxX = Math.min(canvas.width - platformWidth, lastX + 160);
+                    let pX = minX + Math.random() * (maxX - minX);
+
+                    p.y = minY - 65; 
+                    p.x = pX;
+                    p.type = getRandomPlatformType(lastType);
                     p.broken = false;
                 }
             });
@@ -251,13 +273,14 @@
 
                 ctx.fillStyle = "#FFF";
                 ctx.font = "30px Arial";
-                ctx.fillText("GAME OVER", 105, 220);
+                // Canh giữa chữ Game Over cho màn hình rộng 480px
+                ctx.fillText("GAME OVER", 145, 220);
                 
                 ctx.font = "16px Arial";
-                ctx.fillText("Điểm đạt được: " + score, 130, 255);
+                ctx.fillText("Điểm đạt được: " + score, 175, 255);
 
                 ctx.font = "15px Arial";
-                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 75, 295);
+                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 115, 295);
             }
         }
 
