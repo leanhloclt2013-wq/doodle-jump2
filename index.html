@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump - Winter Chill Edition</title>
+    <title>Doodle Jump - Minecraft Chill Edition</title>
     <style>
         body {
             background-color: #121824;
@@ -15,10 +15,10 @@
         }
         canvas {
             border: 4px solid #fff;
-            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d); /* Nền gradient sáng, bắt mắt */
-            background-color: #1a2a6c;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
             border-radius: 8px;
+            image-rendering: pixelated; /* Giữ độ nét Pixel Art */
         }
         p {
             font-size: 14px;
@@ -31,11 +31,11 @@
     </style>
 </head>
 <body>
-    <h1>DOODLE JUMP: WINTER CHILL</h1>
+    <h1>DOODLE JUMP: MINECRAFT EDITION</h1>
     <canvas id="gameCanvas" width="480" height="550"></canvas>
     <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
     <span class="music-hint">🎵 Nhấn phím bất kỳ để bật nhạc chill & bắt đầu!</span><br>
-    <span style="color: #ff7675;">⚠️ Cảnh báo (>200 điểm): Tránh thanh Đỏ (Bẫy) & cẩn thận thanh Nâu (Gãy)!</span></p>
+    <span style="color: #ff7675;">⚠️ Cảnh báo (>200 điểm): Tránh thanh Gai (Bẫy) & Cẩn thận thanh Nứt (Gãy)!</span></p>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -44,7 +44,7 @@
         let score = 0;
         let isGameOver = false;
 
-        // Nhân vật (Doodler)
+        // Nhân vật
         let player = {
             x: 218,
             y: 420,
@@ -54,15 +54,15 @@
             vy: 0
         };
 
-        // Danh sách các thanh nhảy & hiệu ứng hạt
+        // Danh sách các thanh nhảy, hiệu ứng & tuyết rơi
         let platforms = [];
         let particles = [];
         let snowflakes = [];
         const platformWidth = 85;
-        const platformHeight = 15;
+        const platformHeight = 18;
         let platformCount = 8;
 
-        // Khởi tạo hiệu ứng tuyết rơi
+        // Khởi tạo tuyết rơi
         for (let i = 0; i < 40; i++) {
             snowflakes.push({
                 x: Math.random() * canvas.width,
@@ -73,15 +73,15 @@
             });
         }
 
-        // Tạo hiệu ứng hạt lấp lánh khi nhảy
+        // Bắn ra các hạt mảnh vụn Pixel khi va chạm
         function createParticles(x, y, color) {
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 10; i++) {
                 particles.push({
-                    x: x + platformWidth / 2,
-                    y: y,
+                    x: x + Math.random() * platformWidth,
+                    y: y + Math.random() * platformHeight,
                     vx: (Math.random() - 0.5) * 4,
                     vy: (Math.random() - 0.7) * 4,
-                    radius: Math.random() * 3 + 1,
+                    size: Math.random() * 4 + 2,
                     color: color,
                     alpha: 1
                 });
@@ -92,7 +92,6 @@
         let audioCtx = null;
         let isMusicPlaying = false;
         let noteIndex = 0;
-        // Giai điệu chill nhẹ nhàng (Pentatonic scale)
         const chillNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 440.00, 392.00];
 
         function startChillMusic() {
@@ -106,10 +105,10 @@
                         let osc = audioCtx.createOscillator();
                         let gainNode = audioCtx.createGain();
 
-                        osc.type = 'sine'; // Âm thanh êm dịu
+                        osc.type = 'sine';
                         osc.frequency.setValueAtTime(chillNotes[noteIndex], audioCtx.currentTime);
                         
-                        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
                         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
 
                         osc.connect(gainNode);
@@ -121,10 +120,10 @@
                         noteIndex = (noteIndex + 1) % chillNotes.length;
                     } catch (e) {}
                 }
-            }, 600); // Nhịp điệu chậm rãi, thư giãn
+            }, 600);
         }
 
-        // Phím bấm
+        // Lắng nghe phím
         let keys = {};
         window.addEventListener("keydown", e => {
             keys[e.code] = true;
@@ -135,22 +134,28 @@
         });
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Lấy loại thanh nhảy thông minh
+        // Sinh loại thanh nhảy ngẫu nhiên
         function getRandomPlatformType(lastType) {
-            if (score < 200) return 'normal';
+            if (score < 200) {
+                // < 200 điểm: thanh thường + 15% lò xo
+                if (Math.random() < 0.15) return 'spring';
+                return 'normal';
+            }
             if (lastType === 'break' || lastType === 'trap') return 'normal';
 
             let rand = Math.random();
             if (score >= 200 && score < 500) {
                 if (rand < 0.15) return 'break';
+                else if (rand < 0.30) return 'spring';
             } else if (score >= 500) {
                 if (rand < 0.20) return 'break';
                 else if (rand < 0.35) return 'trap';
+                else if (rand < 0.50) return 'spring';
             }
             return 'normal';
         }
 
-        // Khởi tạo các thanh nhảy ban đầu
+        // Khởi tạo danh sách thanh
         function initPlatforms() {
             platforms = [];
             platforms.push({
@@ -190,7 +195,7 @@
             initPlatforms();
         }
 
-        // Cập nhật logic game
+        // Cập nhật game
         function update() {
             if (isGameOver) return;
 
@@ -216,7 +221,7 @@
                 score += Math.floor(diff * 0.3); 
             }
 
-            // Va chạm với thanh nhảy
+            // Xử lý va chạm
             if (player.vy > 0) {
                 platforms.forEach(p => {
                     if (
@@ -227,19 +232,22 @@
                         player.y + player.height <= p.y + platformHeight + player.vy
                     ) {
                         if (p.type === 'trap') {
-                            isGameOver = true;
+                            isGameOver = true; // Chạm gai -> Thua ngay
                         } else if (p.type === 'break') {
                             p.broken = true;
-                            createParticles(p.x, p.y, "#8D6E63");
+                            createParticles(p.x, p.y, "#8B5A2B");
+                        } else if (p.type === 'spring') {
+                            player.vy = -13.0; // Bật lò xo siêu cao!
+                            createParticles(p.x, p.y, "#FFD700");
                         } else {
-                            player.vy = -8.0; 
-                            createParticles(p.x, p.y, "#55efc4"); // Hiệu ứng lóe sáng xanh lấp lánh
+                            player.vy = -8.0; // Nhảy thường
+                            createParticles(p.x, p.y, "#55FF55");
                         }
                     }
                 });
             }
 
-            // Tái tạo thanh nhảy mới phía trên
+            // Tái tạo thanh phía trên
             platforms.forEach(p => {
                 if (p.y > canvas.height) {
                     let minY = Math.min(...platforms.map(item => item.y));
@@ -258,7 +266,7 @@
                 }
             });
 
-            // Cập nhật hiệu ứng tuyết rơi
+            // Cập nhật tuyết
             snowflakes.forEach(sf => {
                 sf.y += sf.speed;
                 sf.x += sf.wind;
@@ -268,7 +276,7 @@
                 }
             });
 
-            // Cập nhật hiệu ứng hạt (particles)
+            // Cập nhật hạt hiệu ứng
             particles.forEach((pt, index) => {
                 pt.x += pt.vx;
                 pt.y += pt.vy;
@@ -281,20 +289,96 @@
             }
         }
 
-        // Vẽ khuôn mặt Man Face sắc nét
+        // Vẽ Khối Cỏ Minecraft Pixel (Grass Block)
+        function drawMinecraftGrassBlock(x, y, w, h, isBroken) {
+            // Nền đất nâu
+            ctx.fillStyle = "#8B5A2B";
+            ctx.fillRect(x, y, w, h);
+
+            // Chi tiết Pixel đất nâu đậm
+            ctx.fillStyle = "#5C3A1E";
+            for (let px = 0; px < w; px += 10) {
+                if ((px / 10) % 2 === 0) {
+                    ctx.fillRect(x + px, y + 8, 5, 5);
+                }
+            }
+
+            // Mặt cỏ xanh lá bên trên
+            ctx.fillStyle = "#55FF55";
+            ctx.fillRect(x, y, w, 5);
+
+            // Rễ cỏ rủ xuống băm ruy-băng
+            ctx.fillStyle = "#388E3C";
+            for (let px = 0; px < w; px += 8) {
+                let rh = (px % 16 === 0) ? 8 : 4;
+                ctx.fillRect(x + px, y + 5, 4, rh);
+            }
+
+            // Nếu gãy: Vẽ vết nứt ngoằn ngoèo ở giữa
+            if (isBroken) {
+                ctx.fillStyle = "#2D1E10";
+                ctx.beginPath();
+                ctx.moveTo(x + w / 2 - 4, y);
+                ctx.lineTo(x + w / 2 + 2, y + 7);
+                ctx.lineTo(x + w / 2 - 3, y + 12);
+                ctx.lineTo(x + w / 2 + 4, y + h);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "#2D1E10";
+                ctx.stroke();
+            }
+        }
+
+        // Vẽ Gai Nhọn (Bẫy)
+        function drawSpikes(x, y, w) {
+            ctx.fillStyle = "#E0E0E0";
+            ctx.strokeStyle = "#757575";
+            ctx.lineWidth = 1;
+
+            let spikeCount = 6;
+            let spikeWidth = w / spikeCount;
+
+            for (let i = 0; i < spikeCount; i++) {
+                let sx = x + i * spikeWidth;
+                ctx.beginPath();
+                ctx.moveTo(sx, y);
+                ctx.lineTo(sx + spikeWidth / 2, y - 10);
+                ctx.lineTo(sx + spikeWidth, y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        // Vẽ Lò Xo (Spring)
+        function drawSpring(x, y, w) {
+            let sx = x + w / 2 - 10;
+            let sy = y - 12;
+
+            ctx.strokeStyle = "#C0C0C0";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(sx + 10, sy + 3, 8, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Đế lò xo màu đỏ
+            ctx.fillStyle = "#E74C3C";
+            ctx.fillRect(sx, y - 3, 20, 3);
+        }
+
+        // Vẽ Man Face
         function drawManFace(x, y, w, h) {
             let cx = x + w / 2;
             let cy = y + h / 2;
 
-            ctx.fillStyle = "#ffeaa7";
-            ctx.strokeStyle = "#d63031";
+            ctx.fillStyle = "#FFEAA7";
+            ctx.strokeStyle = "#D63031";
             ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
-            ctx.strokeStyle = "#2d3436";
+            ctx.strokeStyle = "#2D3436";
             ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(cx - 12, cy - 8);
@@ -305,7 +389,7 @@
             ctx.lineTo(cx + 12, cy - 8);
             ctx.stroke();
 
-            ctx.fillStyle = "#2d3436";
+            ctx.fillStyle = "#2D3436";
             ctx.beginPath();
             ctx.arc(cx - 7, cy - 3, 2.5, 0, Math.PI * 2);
             ctx.arc(cx + 7, cy - 3, 2.5, 0, Math.PI * 2);
@@ -317,17 +401,16 @@
             ctx.stroke();
         }
 
-        // Vẽ đồ họa lên màn hình
+        // Loop vẽ đồ họa
         function draw() {
-            // Vẽ nền gradient sáng sủa
             let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grad.addColorStop(0, "#0984e3");
-            grad.addColorStop(0.5, "#6c5ce7");
-            grad.addColorStop(1, "#dfe6e9");
+            grad.addColorStop(0, "#0984E3");
+            grad.addColorStop(0.5, "#6C5CE7");
+            grad.addColorStop(1, "#DFE6E9");
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Vẽ hiệu ứng tuyết rơi lãng mạn
+            // Tuyết rơi
             ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
             snowflakes.forEach(sf => {
                 ctx.beginPath();
@@ -335,65 +418,61 @@
                 ctx.fill();
             });
 
-            // Vẽ các thanh nhảy có viền bóng nhẹ nhàng
+            // Vẽ các loại thanh nhảy Minecraft
             platforms.forEach(p => {
                 if (p.broken) return;
 
                 if (p.type === 'normal') {
-                    ctx.fillStyle = "#00b894"; // Xanh ngọc sáng
+                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
                 } else if (p.type === 'break') {
-                    ctx.fillStyle = "#b2bec3"; // Xám nhạt phong cách đá/gỗ lạnh
+                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, true);
                 } else if (p.type === 'trap') {
-                    ctx.fillStyle = "#ff7675"; // Đỏ hồng sáng
+                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
+                    drawSpikes(p.x, p.y, platformWidth);
+                } else if (p.type === 'spring') {
+                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
+                    drawSpring(p.x, p.y, platformWidth);
                 }
-
-                ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
-                
-                ctx.strokeStyle = "rgba(255,255,255,0.5)";
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(p.x, p.y, platformWidth, platformHeight);
             });
 
-            // Vẽ các hạt hiệu ứng đặc biệt (Particles)
+            // Vẽ các hạt Pixel
             particles.forEach(pt => {
                 ctx.fillStyle = pt.color;
                 ctx.globalAlpha = pt.alpha;
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
                 ctx.globalAlpha = 1.0;
             });
 
             // Vẽ nhân vật
             drawManFace(player.x, player.y, player.width, player.height);
 
-            // Điểm số phong cách hiện đại
-            ctx.fillStyle = "#fff";
+            // Điểm số
+            ctx.fillStyle = "#FFF";
             ctx.font = "bold 20px Arial";
             ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
             ctx.shadowBlur = 4;
             ctx.fillText("Điểm: " + score, 20, 30);
-            ctx.shadowBlur = 0; // Reset shadow
+            ctx.shadowBlur = 0;
 
             if (score >= 200) {
-                ctx.fillStyle = "#ff7675";
+                ctx.fillStyle = "#FF7675";
                 ctx.font = "bold 13px Arial";
-                ctx.fillText("⚠️ CẨN THẬN: Xám = Gãy | Đỏ = Bẫy!", 20, 55);
+                ctx.fillText("⚠️ Nứt = Gãy | Gai = Bẫy | Lò Xo = Nhảy Cao!", 20, 55);
             }
 
-            // Màn hình Game Over
+            // Game Over
             if (isGameOver) {
                 ctx.fillStyle = "rgba(18, 24, 36, 0.85)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = "#fff";
+                ctx.fillStyle = "#FFF";
                 ctx.font = "bold 32px Arial";
                 ctx.fillText("GAME OVER", 130, 210);
                 
                 ctx.font = "18px Arial";
                 ctx.fillText("Điểm đạt được: " + score, 165, 250);
 
-                ctx.fillStyle = "#00b894";
+                ctx.fillStyle = "#55FF55";
                 ctx.font = "bold 16px Arial";
                 ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 100, 295);
             }
