@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump - Man Face Edition</title>
+    <title>Doodle Jump - Winter Chill Edition</title>
     <style>
         body {
-            background-color: #202020;
+            background-color: #121824;
             color: white;
             text-align: center;
             font-family: Arial, sans-serif;
@@ -15,21 +15,27 @@
         }
         canvas {
             border: 4px solid #fff;
-            background-color: #f7f7f7;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d); /* Nền gradient sáng, bắt mắt */
+            background-color: #1a2a6c;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
         }
         p {
             font-size: 14px;
-            color: #aaa;
+            color: #ddd;
+        }
+        .music-hint {
+            color: #a29bfe;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <h1>DOODLE JUMP: MAN FACE</h1>
-    <!-- Đã mở rộng chiều rộng canvas từ 400 lên 480 -->
+    <h1>DOODLE JUMP: WINTER CHILL</h1>
     <canvas id="gameCanvas" width="480" height="550"></canvas>
     <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
-    <span style="color: #ff5252;">⚠️ Cảnh báo (>200 điểm): Tránh thanh màu Đỏ (Bẫy) và cẩn thận thanh màu Nâu (Gãy)!</span></p>
+    <span class="music-hint">🎵 Nhấn phím bất kỳ để bật nhạc chill & bắt đầu!</span><br>
+    <span style="color: #ff7675;">⚠️ Cảnh báo (>200 điểm): Tránh thanh Đỏ (Bẫy) & cẩn thận thanh Nâu (Gãy)!</span></p>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
@@ -40,7 +46,7 @@
 
         // Nhân vật (Doodler)
         let player = {
-            x: 218, // Canh giữa màn hình rộng 480
+            x: 218,
             y: 420,
             width: 44,
             height: 44,
@@ -48,24 +54,91 @@
             vy: 0
         };
 
-        // Danh sách các thanh nhảy (Platforms)
+        // Danh sách các thanh nhảy & hiệu ứng hạt
         let platforms = [];
+        let particles = [];
+        let snowflakes = [];
         const platformWidth = 85;
         const platformHeight = 15;
-        let platformCount = 8; // Tăng số lượng thanh trên màn hình lên 8 cho phong phú
+        let platformCount = 8;
+
+        // Khởi tạo hiệu ứng tuyết rơi
+        for (let i = 0; i < 40; i++) {
+            snowflakes.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2.5 + 1,
+                speed: Math.random() * 0.8 + 0.3,
+                wind: Math.random() * 0.4 - 0.2
+            });
+        }
+
+        // Tạo hiệu ứng hạt lấp lánh khi nhảy
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x + platformWidth / 2,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.7) * 4,
+                    radius: Math.random() * 3 + 1,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        // --- HỆ THỐNG ÂM THANH CHILL (Web Audio API) ---
+        let audioCtx = null;
+        let isMusicPlaying = false;
+        let noteIndex = 0;
+        // Giai điệu chill nhẹ nhàng (Pentatonic scale)
+        const chillNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 440.00, 392.00];
+
+        function startChillMusic() {
+            if (isMusicPlaying) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            isMusicPlaying = true;
+
+            setInterval(() => {
+                if (!isGameOver && audioCtx) {
+                    try {
+                        let osc = audioCtx.createOscillator();
+                        let gainNode = audioCtx.createGain();
+
+                        osc.type = 'sine'; // Âm thanh êm dịu
+                        osc.frequency.setValueAtTime(chillNotes[noteIndex], audioCtx.currentTime);
+                        
+                        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+
+                        osc.connect(gainNode);
+                        gainNode.connect(audioCtx.destination);
+
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 1.2);
+
+                        noteIndex = (noteIndex + 1) % chillNotes.length;
+                    } catch (e) {}
+                }
+            }, 600); // Nhịp điệu chậm rãi, thư giãn
+        }
 
         // Phím bấm
         let keys = {};
-        window.addEventListener("keydown", e => keys[e.code] = true);
+        window.addEventListener("keydown", e => {
+            keys[e.code] = true;
+            startChillMusic();
+            if (e.code === "Space" && isGameOver) {
+                resetGame();
+            }
+        });
         window.addEventListener("keyup", e => keys[e.code] = false);
 
-        // Lấy loại thanh nhảy thông minh (Không bao giờ tạo 2 thanh nguy hiểm liên tiếp)
+        // Lấy loại thanh nhảy thông minh
         function getRandomPlatformType(lastType) {
             if (score < 200) return 'normal';
-            
-            if (lastType === 'break' || lastType === 'trap') {
-                return 'normal';
-            }
+            if (lastType === 'break' || lastType === 'trap') return 'normal';
 
             let rand = Math.random();
             if (score >= 200 && score < 500) {
@@ -81,7 +154,7 @@
         function initPlatforms() {
             platforms = [];
             platforms.push({
-                x: 197, // Ngay dưới chân nhân vật
+                x: 197,
                 y: 470,
                 type: 'normal',
                 broken: false
@@ -91,8 +164,6 @@
             for (let i = 1; i < platformCount; i++) {
                 let pY = 470 - (i * 65);
                 let type = getRandomPlatformType(prevType);
-                
-                // Tránh để các thanh quá xa nhau về chiều ngang, giúp dễ nhảy tới
                 let prevX = platforms[i - 1].x;
                 let minX = Math.max(0, prevX - 150);
                 let maxX = Math.min(canvas.width - platformWidth, prevX + 150);
@@ -108,7 +179,6 @@
             }
         }
 
-        // Bắt đầu lại game
         function resetGame() {
             score = 0;
             isGameOver = false;
@@ -116,6 +186,7 @@
             player.y = 420;
             player.vx = 0;
             player.vy = 0;
+            particles = [];
             initPlatforms();
         }
 
@@ -123,7 +194,6 @@
         function update() {
             if (isGameOver) return;
 
-            // Tăng nhẹ tốc độ di chuyển ngang cho tương ứng với màn hình rộng hơn
             if (keys["ArrowLeft"] || keys["KeyA"]) {
                 player.vx = -4.8;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
@@ -133,7 +203,6 @@
             }
 
             player.x += player.vx;
-
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
@@ -143,13 +212,11 @@
             if (player.y < canvas.height / 2) {
                 let diff = canvas.height / 2 - player.y;
                 player.y = canvas.height / 2;
-                platforms.forEach(p => {
-                    p.y += diff;
-                });
+                platforms.forEach(p => p.y += diff);
                 score += Math.floor(diff * 0.3); 
             }
 
-            // Va chạm với các thanh nhảy (chỉ khi đang rơi)
+            // Va chạm với thanh nhảy
             if (player.vy > 0) {
                 platforms.forEach(p => {
                     if (
@@ -163,8 +230,10 @@
                             isGameOver = true;
                         } else if (p.type === 'break') {
                             p.broken = true;
+                            createParticles(p.x, p.y, "#8D6E63");
                         } else {
                             player.vy = -8.0; 
+                            createParticles(p.x, p.y, "#55efc4"); // Hiệu ứng lóe sáng xanh lấp lánh
                         }
                     }
                 });
@@ -178,7 +247,6 @@
                     let lastType = highestPlatform ? highestPlatform.type : 'normal';
                     let lastX = highestPlatform ? highestPlatform.x : canvas.width / 2;
 
-                    // Giới hạn vị trí ngang của thanh mới không bị lệch quá xa so với thanh trước đó
                     let minX = Math.max(0, lastX - 160);
                     let maxX = Math.min(canvas.width - platformWidth, lastX + 160);
                     let pX = minX + Math.random() * (maxX - minX);
@@ -190,25 +258,43 @@
                 }
             });
 
+            // Cập nhật hiệu ứng tuyết rơi
+            snowflakes.forEach(sf => {
+                sf.y += sf.speed;
+                sf.x += sf.wind;
+                if (sf.y > canvas.height) {
+                    sf.y = 0;
+                    sf.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Cập nhật hiệu ứng hạt (particles)
+            particles.forEach((pt, index) => {
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= 0.03;
+                if (pt.alpha <= 0) particles.splice(index, 1);
+            });
+
             if (player.y > canvas.height) {
                 isGameOver = true;
             }
         }
 
-        // Vẽ khuôn mặt "Man Face" biểu cảm
+        // Vẽ khuôn mặt Man Face sắc nét
         function drawManFace(x, y, w, h) {
             let cx = x + w / 2;
             let cy = y + h / 2;
 
-            ctx.fillStyle = "#FFD700";
-            ctx.strokeStyle = "#B8860B";
-            ctx.lineWidth = 2;
+            ctx.fillStyle = "#ffeaa7";
+            ctx.strokeStyle = "#d63031";
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
-            ctx.strokeStyle = "#000";
+            ctx.strokeStyle = "#2d3436";
             ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.moveTo(cx - 12, cy - 8);
@@ -219,7 +305,7 @@
             ctx.lineTo(cx + 12, cy - 8);
             ctx.stroke();
 
-            ctx.fillStyle = "#000";
+            ctx.fillStyle = "#2d3436";
             ctx.beginPath();
             ctx.arc(cx - 7, cy - 3, 2.5, 0, Math.PI * 2);
             ctx.arc(cx + 7, cy - 3, 2.5, 0, Math.PI * 2);
@@ -233,54 +319,83 @@
 
         // Vẽ đồ họa lên màn hình
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Vẽ nền gradient sáng sủa
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, "#0984e3");
+            grad.addColorStop(0.5, "#6c5ce7");
+            grad.addColorStop(1, "#dfe6e9");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Vẽ hiệu ứng tuyết rơi lãng mạn
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            snowflakes.forEach(sf => {
+                ctx.beginPath();
+                ctx.arc(sf.x, sf.y, sf.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Vẽ các thanh nhảy có viền bóng nhẹ nhàng
             platforms.forEach(p => {
                 if (p.broken) return;
 
                 if (p.type === 'normal') {
-                    ctx.fillStyle = "#4CAF50";
+                    ctx.fillStyle = "#00b894"; // Xanh ngọc sáng
                 } else if (p.type === 'break') {
-                    ctx.fillStyle = "#8D6E63";
+                    ctx.fillStyle = "#b2bec3"; // Xám nhạt phong cách đá/gỗ lạnh
                 } else if (p.type === 'trap') {
-                    ctx.fillStyle = "#F44336";
+                    ctx.fillStyle = "#ff7675"; // Đỏ hồng sáng
                 }
 
                 ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
                 
-                if (p.type === 'break' || p.type === 'trap') {
-                    ctx.strokeStyle = "#333";
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(p.x, p.y, platformWidth, platformHeight);
-                }
+                ctx.strokeStyle = "rgba(255,255,255,0.5)";
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(p.x, p.y, platformWidth, platformHeight);
             });
 
+            // Vẽ các hạt hiệu ứng đặc biệt (Particles)
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.alpha;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+
+            // Vẽ nhân vật
             drawManFace(player.x, player.y, player.width, player.height);
 
-            ctx.fillStyle = "#000";
-            ctx.font = "18px Arial";
-            ctx.fillText("Điểm: " + score, 15, 25);
+            // Điểm số phong cách hiện đại
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 20px Arial";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+            ctx.shadowBlur = 4;
+            ctx.fillText("Điểm: " + score, 20, 30);
+            ctx.shadowBlur = 0; // Reset shadow
 
             if (score >= 200) {
-                ctx.fillStyle = "#d32f2f";
-                ctx.font = "13px Arial";
-                ctx.fillText("⚠️ CẨN THẬN: Nâu = Gãy | Đỏ = Bẫy!", 15, 48);
+                ctx.fillStyle = "#ff7675";
+                ctx.font = "bold 13px Arial";
+                ctx.fillText("⚠️ CẨN THẬN: Xám = Gãy | Đỏ = Bẫy!", 20, 55);
             }
 
+            // Màn hình Game Over
             if (isGameOver) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillStyle = "rgba(18, 24, 36, 0.85)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = "#FFF";
-                ctx.font = "30px Arial";
-                // Canh giữa chữ Game Over cho màn hình rộng 480px
-                ctx.fillText("GAME OVER", 145, 220);
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 32px Arial";
+                ctx.fillText("GAME OVER", 130, 210);
                 
-                ctx.font = "16px Arial";
-                ctx.fillText("Điểm đạt được: " + score, 175, 255);
+                ctx.font = "18px Arial";
+                ctx.fillText("Điểm đạt được: " + score, 165, 250);
 
-                ctx.font = "15px Arial";
-                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 115, 295);
+                ctx.fillStyle = "#00b894";
+                ctx.font = "bold 16px Arial";
+                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 100, 295);
             }
         }
 
@@ -289,12 +404,6 @@
             draw();
             requestAnimationFrame(loop);
         }
-
-        window.addEventListener("keydown", e => {
-            if (e.code === "Space" && isGameOver) {
-                resetGame();
-            }
-        });
 
         initPlatforms();
         loop();
