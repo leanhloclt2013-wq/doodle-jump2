@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump - Minecraft Chill Edition</title>
+    <title>Doodle Jump - Minecraft Edition</title>
     <style>
         body {
             background-color: #121824;
@@ -12,34 +12,188 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
+            user-select: none;
+        }
+        #gameContainer {
+            position: relative;
+            width: 480px;
+            height: 550px;
+            margin: 0 auto;
         }
         canvas {
             border: 4px solid #fff;
             background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
             border-radius: 8px;
-            image-rendering: pixelated; /* Giữ độ nét Pixel Art */
+            image-rendering: pixelated;
         }
-        p {
-            font-size: 14px;
-            color: #ddd;
+
+        /* Giao diện Overlay (Menu / Settings / Quit) */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 24, 36, 0.92);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            padding: 20px;
+            z-index: 10;
         }
-        .music-hint {
-            color: #a29bfe;
+
+        .hidden {
+            display: none !important;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #55FF55;
+            font-size: 28px;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .btn-menu {
+            width: 220px;
+            padding: 12px 20px;
+            margin: 8px 0;
+            background: #55FF55;
+            color: #121824;
+            border: 3px solid #fff;
+            border-radius: 6px;
+            font-size: 16px;
             font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #388E3C;
+            transition: all 0.1s ease;
+        }
+
+        .btn-menu:hover {
+            background: #76ff76;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #388E3C;
+        }
+
+        .btn-menu:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #388E3C;
+        }
+
+        .btn-danger {
+            background: #ff7675;
+            box-shadow: 0 4px 0 #d63031;
+        }
+        .btn-danger:hover {
+            background: #ff8888;
+            box-shadow: 0 6px 0 #d63031;
+        }
+
+        /* Mục Settings */
+        .setting-item {
+            width: 80%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+
+        .setting-item label {
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 120px;
+            cursor: pointer;
+        }
+
+        .guide-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: left;
+            margin-top: 10px;
+            width: 80%;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
-    <h1>DOODLE JUMP: MINECRAFT EDITION</h1>
-    <canvas id="gameCanvas" width="480" height="550"></canvas>
-    <p>Dùng phím mũi tên <b>Trái / Phải</b> hoặc phím <b>A / D</b> để di chuyển.<br>
-    <span class="music-hint">🎵 Nhấn phím bất kỳ để bật nhạc chill & bắt đầu!</span><br>
-    <span style="color: #ff7675;">⚠️ Cảnh báo (>200 điểm): Tránh thanh Gai (Bẫy) & Cẩn thận thanh Nứt (Gãy)!</span></p>
+    <h1>DOODLE JUMP: MINECRAFT</h1>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="480" height="550"></canvas>
+
+        <!-- 1. MÀN HÌNH CHỜ (MAIN MENU) -->
+        <div id="menuScreen" class="overlay-screen">
+            <h2>MINECRAFT JUMP</h2>
+            <button class="btn-menu" id="btnStart">BẮT ĐẦU CHƠI</button>
+            <button class="btn-menu" id="btnSettings">CÀI ĐẶT</button>
+            <button class="btn-menu btn-danger" id="btnQuit">THOÁT GAME</button>
+        </div>
+
+        <!-- 2. MÀN HÌNH CÀI ĐẶT (SETTINGS) -->
+        <div id="settingsScreen" class="overlay-screen hidden">
+            <h2>CÀI ĐẶT</h2>
+
+            <div class="setting-item">
+                <label for="sensitivitySlider">Độ nhạy (Tốc độ):</label>
+                <input type="range" id="sensitivitySlider" min="3" max="8" step="0.5" value="4.8">
+            </div>
+
+            <div class="setting-item">
+                <label for="musicToggle">Âm thanh (Nhạc chill):</label>
+                <input type="checkbox" id="musicToggle" checked>
+            </div>
+
+            <div class="guide-box">
+                <b>🎮 HƯỚNG DẪN CHƠI:</b><br>
+                • Di chuyển: Dùng phím <b>A / D</b> hoặc phím <b>Trái / Phải</b>.<br>
+                • Khối cỏ thường: Nhảy bình thường.<br>
+                • Khối lò xo: Bật nhảy siêu cao.<br>
+                • Khối nứt: Sẽ gãy khi giẫm vào.<br>
+                • Khối bẫy gai: Chạm vào là thua ngay!
+            </div>
+
+            <button class="btn-menu" id="btnBackSettings" style="margin-top: 15px;">LƯU & QUAY LẠI</button>
+        </div>
+
+        <!-- 3. MÀN HÌNH THOÁT (QUIT SCREEN) -->
+        <div id="quitScreen" class="overlay-screen hidden">
+            <h2>CẢM ƠN BẠN ĐÃ CHƠI!</h2>
+            <p style="color: #aaa;">Bạn đã thoát game.</p>
+            <button class="btn-menu" id="btnReopen">CHƠI LẠI</button>
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+
+        // Các phần tử UI
+        const menuScreen = document.getElementById("menuScreen");
+        const settingsScreen = document.getElementById("settingsScreen");
+        const quitScreen = document.getElementById("quitScreen");
+
+        const btnStart = document.getElementById("btnStart");
+        const btnSettings = document.getElementById("btnSettings");
+        const btnQuit = document.getElementById("btnQuit");
+        const btnBackSettings = document.getElementById("btnBackSettings");
+        const btnReopen = document.getElementById("btnReopen");
+
+        const sensitivitySlider = document.getElementById("sensitivitySlider");
+        const musicToggle = document.getElementById("musicToggle");
+
+        // Cấu hình game
+        let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER', 'SETTINGS', 'QUIT'
+        let moveSpeed = 4.8;
+        let isMusicEnabled = true;
 
         let score = 0;
         let isGameOver = false;
@@ -90,17 +244,18 @@
 
         // --- HỆ THỐNG ÂM THANH CHILL (Web Audio API) ---
         let audioCtx = null;
-        let isMusicPlaying = false;
+        let musicInterval = null;
         let noteIndex = 0;
         const chillNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 440.00, 392.00];
 
         function startChillMusic() {
-            if (isMusicPlaying) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            isMusicPlaying = true;
+            if (musicInterval || !isMusicEnabled) return;
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
 
-            setInterval(() => {
-                if (!isGameOver && audioCtx) {
+            musicInterval = setInterval(() => {
+                if (gameState === 'PLAYING' && isMusicEnabled && audioCtx) {
                     try {
                         let osc = audioCtx.createOscillator();
                         let gainNode = audioCtx.createGain();
@@ -123,12 +278,18 @@
             }, 600);
         }
 
-        // Lắng nghe phím
+        function stopChillMusic() {
+            if (musicInterval) {
+                clearInterval(musicInterval);
+                musicInterval = null;
+            }
+        }
+
+        // Lắng nghe phím bấm
         let keys = {};
         window.addEventListener("keydown", e => {
             keys[e.code] = true;
-            startChillMusic();
-            if (e.code === "Space" && isGameOver) {
+            if (gameState === 'PLAYING' && e.code === "Space" && isGameOver) {
                 resetGame();
             }
         });
@@ -137,7 +298,6 @@
         // Sinh loại thanh nhảy ngẫu nhiên
         function getRandomPlatformType(lastType) {
             if (score < 200) {
-                // < 200 điểm: thanh thường + 15% lò xo
                 if (Math.random() < 0.15) return 'spring';
                 return 'normal';
             }
@@ -197,12 +357,13 @@
 
         // Cập nhật game
         function update() {
-            if (isGameOver) return;
+            if (gameState !== 'PLAYING' || isGameOver) return;
 
+            // Sử dụng moveSpeed điều chỉnh từ Cài đặt
             if (keys["ArrowLeft"] || keys["KeyA"]) {
-                player.vx = -4.8;
+                player.vx = -moveSpeed;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
-                player.vx = 4.8;
+                player.vx = moveSpeed;
             } else {
                 player.vx *= 0.8; 
             }
@@ -291,11 +452,9 @@
 
         // Vẽ Khối Cỏ Minecraft Pixel (Grass Block)
         function drawMinecraftGrassBlock(x, y, w, h, isBroken) {
-            // Nền đất nâu
             ctx.fillStyle = "#8B5A2B";
             ctx.fillRect(x, y, w, h);
 
-            // Chi tiết Pixel đất nâu đậm
             ctx.fillStyle = "#5C3A1E";
             for (let px = 0; px < w; px += 10) {
                 if ((px / 10) % 2 === 0) {
@@ -303,18 +462,15 @@
                 }
             }
 
-            // Mặt cỏ xanh lá bên trên
             ctx.fillStyle = "#55FF55";
             ctx.fillRect(x, y, w, 5);
 
-            // Rễ cỏ rủ xuống băm ruy-băng
             ctx.fillStyle = "#388E3C";
             for (let px = 0; px < w; px += 8) {
                 let rh = (px % 16 === 0) ? 8 : 4;
                 ctx.fillRect(x + px, y + 5, 4, rh);
             }
 
-            // Nếu gãy: Vẽ vết nứt ngoằn ngoèo ở giữa
             if (isBroken) {
                 ctx.fillStyle = "#2D1E10";
                 ctx.beginPath();
@@ -360,7 +516,6 @@
             ctx.arc(sx + 10, sy + 3, 8, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Đế lò xo màu đỏ
             ctx.fillStyle = "#E74C3C";
             ctx.fillRect(sx, y - 3, 20, 3);
         }
@@ -418,63 +573,59 @@
                 ctx.fill();
             });
 
-            // Vẽ các loại thanh nhảy Minecraft
-            platforms.forEach(p => {
-                if (p.broken) return;
+            if (gameState === 'PLAYING') {
+                // Vẽ các loại thanh nhảy
+                platforms.forEach(p => {
+                    if (p.broken) return;
 
-                if (p.type === 'normal') {
-                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
-                } else if (p.type === 'break') {
-                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, true);
-                } else if (p.type === 'trap') {
-                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
-                    drawSpikes(p.x, p.y, platformWidth);
-                } else if (p.type === 'spring') {
-                    drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
-                    drawSpring(p.x, p.y, platformWidth);
-                }
-            });
+                    if (p.type === 'normal') {
+                        drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
+                    } else if (p.type === 'break') {
+                        drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, true);
+                    } else if (p.type === 'trap') {
+                        drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
+                        drawSpikes(p.x, p.y, platformWidth);
+                    } else if (p.type === 'spring') {
+                        drawMinecraftGrassBlock(p.x, p.y, platformWidth, platformHeight, false);
+                        drawSpring(p.x, p.y, platformWidth);
+                    }
+                });
 
-            // Vẽ các hạt Pixel
-            particles.forEach(pt => {
-                ctx.fillStyle = pt.color;
-                ctx.globalAlpha = pt.alpha;
-                ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
-                ctx.globalAlpha = 1.0;
-            });
+                // Vẽ các hạt Pixel
+                particles.forEach(pt => {
+                    ctx.fillStyle = pt.color;
+                    ctx.globalAlpha = pt.alpha;
+                    ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+                    ctx.globalAlpha = 1.0;
+                });
 
-            // Vẽ nhân vật
-            drawManFace(player.x, player.y, player.width, player.height);
+                // Vẽ nhân vật
+                drawManFace(player.x, player.y, player.width, player.height);
 
-            // Điểm số
-            ctx.fillStyle = "#FFF";
-            ctx.font = "bold 20px Arial";
-            ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-            ctx.shadowBlur = 4;
-            ctx.fillText("Điểm: " + score, 20, 30);
-            ctx.shadowBlur = 0;
-
-            if (score >= 200) {
-                ctx.fillStyle = "#FF7675";
-                ctx.font = "bold 13px Arial";
-                ctx.fillText("⚠️ Nứt = Gãy | Gai = Bẫy | Lò Xo = Nhảy Cao!", 20, 55);
-            }
-
-            // Game Over
-            if (isGameOver) {
-                ctx.fillStyle = "rgba(18, 24, 36, 0.85)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+                // Điểm số (Đã xóa toàn bộ chữ cảnh báo)
                 ctx.fillStyle = "#FFF";
-                ctx.font = "bold 32px Arial";
-                ctx.fillText("GAME OVER", 130, 210);
-                
-                ctx.font = "18px Arial";
-                ctx.fillText("Điểm đạt được: " + score, 165, 250);
+                ctx.font = "bold 20px Arial";
+                ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+                ctx.shadowBlur = 4;
+                ctx.fillText("Điểm: " + score, 20, 35);
+                ctx.shadowBlur = 0;
 
-                ctx.fillStyle = "#55FF55";
-                ctx.font = "bold 16px Arial";
-                ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 100, 295);
+                // Game Over
+                if (isGameOver) {
+                    ctx.fillStyle = "rgba(18, 24, 36, 0.85)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.fillStyle = "#FFF";
+                    ctx.font = "bold 32px Arial";
+                    ctx.fillText("GAME OVER", 130, 210);
+                    
+                    ctx.font = "18px Arial";
+                    ctx.fillText("Điểm đạt được: " + score, 165, 250);
+
+                    ctx.fillStyle = "#55FF55";
+                    ctx.font = "bold 16px Arial";
+                    ctx.fillText("Nhấn PHÍM CÁCH (Space) để chơi lại", 100, 295);
+                }
             }
         }
 
@@ -484,7 +635,43 @@
             requestAnimationFrame(loop);
         }
 
-        initPlatforms();
+        // --- XỬ LÝ SỰ KIỆN MENU & CÀI ĐẶT ---
+        btnStart.addEventListener("click", () => {
+            menuScreen.classList.add("hidden");
+            gameState = 'PLAYING';
+            resetGame();
+            startChillMusic();
+        });
+
+        btnSettings.addEventListener("click", () => {
+            menuScreen.classList.add("hidden");
+            settingsScreen.classList.remove("hidden");
+        });
+
+        btnBackSettings.addEventListener("click", () => {
+            moveSpeed = parseFloat(sensitivitySlider.value);
+            isMusicEnabled = musicToggle.checked;
+            if (!isMusicEnabled) {
+                stopChillMusic();
+            }
+
+            settingsScreen.classList.add("hidden");
+            menuScreen.classList.remove("hidden");
+        });
+
+        btnQuit.addEventListener("click", () => {
+            menuScreen.classList.add("hidden");
+            quitScreen.classList.remove("hidden");
+            gameState = 'QUIT';
+            stopChillMusic();
+        });
+
+        btnReopen.addEventListener("click", () => {
+            quitScreen.classList.add("hidden");
+            menuScreen.classList.remove("hidden");
+            gameState = 'MENU';
+        });
+
         loop();
     </script>
 </body>
