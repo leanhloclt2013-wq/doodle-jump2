@@ -22,7 +22,7 @@
         }
         canvas {
             border: 4px solid #fff;
-            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d);
+            background: #ffffff;
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             image-rendering: pixelated;
@@ -144,7 +144,7 @@
 
             <div class="setting-item">
                 <label for="sensitivitySlider">Độ nhạy (Tốc độ):</label>
-                <input type="range" id="sensitivitySlider" min="2.4" max="8" step="0.5" value="3.84">
+                <input type="range" id="sensitivitySlider" min="1.5" max="6" step="0.5" value="2.5">
             </div>
 
             <div class="setting-item">
@@ -190,9 +190,9 @@
         const sensitivitySlider = document.getElementById("sensitivitySlider");
         const musicToggle = document.getElementById("musicToggle");
 
-        // Cấu hình game (Giảm tốc độ gốc 20%: 4.8 * 0.8 = 3.84)
+        // Cấu hình game (Giảm tốc độ xuống thấp hơn nữa: 2.5)
         let gameState = 'MENU'; 
-        let moveSpeed = 3.84;
+        let moveSpeed = 2.5;
         let isMusicEnabled = true;
 
         let score = 0;
@@ -632,15 +632,24 @@
 
         // Loop vẽ đồ họa
         function draw() {
-            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            grad.addColorStop(0, "#0984E3");
-            grad.addColorStop(0.5, "#6C5CE7");
-            grad.addColorStop(1, "#DFE6E9");
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Thay đổi màu nền tùy theo mốc 1000 điểm
+            let level = Math.floor(score / 1000);
+            if (level === 0) {
+                // Đầu game: Nền trắng tinh
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else {
+                // Từ 1000 điểm trở lên: Đổi sang nền gradient
+                let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                grad.addColorStop(0, "#0984E3");
+                grad.addColorStop(0.5, "#6C5CE7");
+                grad.addColorStop(1, "#DFE6E9");
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
-            // Tuyết rơi
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            // Tuyết rơi (chỉ hiển thị khi đã qua mốc 1000 điểm hoặc luôn hiển thị nhẹ)
+            ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
             snowflakes.forEach(sf => {
                 ctx.beginPath();
                 ctx.arc(sf.x, sf.y, sf.radius, 0, Math.PI * 2);
@@ -691,8 +700,8 @@
                     ctx.restore();
                 }
 
-                // Điểm số
-                ctx.fillStyle = "#FFF";
+                // Điểm số (đổi màu chữ đen nếu nền trắng để dễ nhìn)
+                ctx.fillStyle = level === 0 ? "#333" : "#FFF";
                 ctx.font = "bold 20px Arial";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
                 ctx.shadowBlur = 4;
