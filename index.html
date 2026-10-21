@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Doodle Jump - Minecraft Edition</title>
+    <title>High Jump - Minecraft Edition</title>
     <style>
         body {
             background-color: #121824;
@@ -125,14 +125,14 @@
     </style>
 </head>
 <body>
-    <h1>DOODLE JUMP: MINECRAFT</h1>
+    <h1>HIGH JUMP</h1>
 
     <div id="gameContainer">
         <canvas id="gameCanvas" width="480" height="550"></canvas>
 
         <!-- 1. MÀN HÌNH CHỜ (MAIN MENU) -->
         <div id="menuScreen" class="overlay-screen">
-            <h2>MINECRAFT JUMP</h2>
+            <h2>HIGH JUMP</h2>
             <button class="btn-menu" id="btnStart">BẮT ĐẦU CHƠI</button>
             <button class="btn-menu" id="btnSettings">CÀI ĐẶT</button>
             <button class="btn-menu btn-danger" id="btnQuit">THOÁT GAME</button>
@@ -144,7 +144,7 @@
 
             <div class="setting-item">
                 <label for="sensitivitySlider">Độ nhạy (Tốc độ):</label>
-                <input type="range" id="sensitivitySlider" min="3" max="8" step="0.5" value="4.8">
+                <input type="range" id="sensitivitySlider" min="2.4" max="8" step="0.5" value="3.84">
             </div>
 
             <div class="setting-item">
@@ -190,13 +190,26 @@
         const sensitivitySlider = document.getElementById("sensitivitySlider");
         const musicToggle = document.getElementById("musicToggle");
 
-        // Cấu hình game
-        let gameState = 'MENU'; // 'MENU', 'PLAYING', 'GAMEOVER', 'SETTINGS', 'QUIT'
-        let moveSpeed = 4.8;
+        // Cấu hình game (Giảm tốc độ gốc 20%: 4.8 * 0.8 = 3.84)
+        let gameState = 'MENU'; 
+        let moveSpeed = 3.84;
         let isMusicEnabled = true;
 
         let score = 0;
         let isGameOver = false;
+
+        // Quản lý mốc thông báo mỗi 1000 điểm
+        let lastMilestone = 0;
+        let announcement = {
+            text: "",
+            x: 0,
+            y: 0,
+            alpha: 0,
+            scale: 1,
+            vx: 0
+        };
+
+        const praiseMessages = ["GOOD!", "EXCELLENT!", "NICE!", "GREAT!", "AWESOME!", "SUPERB!"];
 
         // Nhân vật
         let player = {
@@ -347,6 +360,8 @@
         function resetGame() {
             score = 0;
             isGameOver = false;
+            lastMilestone = 0;
+            announcement.alpha = 0;
             player.x = 218;
             player.y = 420;
             player.vx = 0;
@@ -359,11 +374,37 @@
         function update() {
             if (gameState !== 'PLAYING' || isGameOver) return;
 
-            // Sử dụng moveSpeed điều chỉnh từ Cài đặt
+            // Kiểm tra mốc điểm 1000 để kích hoạt hoạt ảnh thông báo
+            let currentMilestone = Math.floor(score / 1000) * 1000;
+            if (currentMilestone > 0 && currentMilestone > lastMilestone) {
+                lastMilestone = currentMilestone;
+                let randomMsg = praiseMessages[Math.floor(Math.random() * praiseMessages.length)];
+                announcement.text = `${currentMilestone} PTS - ${randomMsg}`;
+                announcement.x = canvas.width + 50;
+                announcement.y = 120;
+                announcement.alpha = 1.0;
+                announcement.scale = 1.2;
+                announcement.vx = -6; // Tốc độ lướt qua màn hình
+            }
+
+            // Hiệu ứng hoạt ảnh lướt qua chữ
+            if (announcement.alpha > 0) {
+                announcement.x += announcement.vx;
+                announcement.alpha -= 0.012; // Mờ dần theo thời gian
+                if (announcement.alpha < 0) announcement.alpha = 0;
+            }
+
+            // Tốc độ tối đa chỉ được áp dụng khi đạt điểm 1500 trở lên
+            let currentMoveSpeed = moveSpeed;
+            if (score >= 1500) {
+                // Tăng tốc độ mạnh mẽ khi đạt mốc 1500 điểm
+                currentMoveSpeed = moveSpeed * 1.6; 
+            }
+
             if (keys["ArrowLeft"] || keys["KeyA"]) {
-                player.vx = -moveSpeed;
+                player.vx = -currentMoveSpeed;
             } else if (keys["ArrowRight"] || keys["KeyD"]) {
-                player.vx = moveSpeed;
+                player.vx = currentMoveSpeed;
             } else {
                 player.vx *= 0.8; 
             }
@@ -393,15 +434,15 @@
                         player.y + player.height <= p.y + platformHeight + player.vy
                     ) {
                         if (p.type === 'trap') {
-                            isGameOver = true; // Chạm gai -> Thua ngay
+                            isGameOver = true; 
                         } else if (p.type === 'break') {
                             p.broken = true;
                             createParticles(p.x, p.y, "#8B5A2B");
                         } else if (p.type === 'spring') {
-                            player.vy = -13.0; // Bật lò xo siêu cao!
+                            player.vy = -13.0; 
                             createParticles(p.x, p.y, "#FFD700");
                         } else {
-                            player.vy = -8.0; // Nhảy thường
+                            player.vy = -8.0; 
                             createParticles(p.x, p.y, "#55FF55");
                         }
                     }
@@ -602,7 +643,22 @@
                 // Vẽ nhân vật
                 drawManFace(player.x, player.y, player.width, player.height);
 
-                // Điểm số (Đã xóa toàn bộ chữ cảnh báo)
+                // Vẽ hoạt ảnh chữ lướt qua màn hình khi đạt mỗi mốc 1000 điểm
+                if (announcement.alpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = announcement.alpha;
+                    ctx.font = "bold 32px Arial";
+                    ctx.fillStyle = "#FFD700";
+                    ctx.strokeStyle = "#000";
+                    ctx.lineWidth = 4;
+                    ctx.shadowColor = "rgba(255, 255, 0, 0.8)";
+                    ctx.shadowBlur = 10;
+                    ctx.strokeText(announcement.text, announcement.x, announcement.y);
+                    ctx.fillText(announcement.text, announcement.x, announcement.y);
+                    ctx.restore();
+                }
+
+                // Điểm số
                 ctx.fillStyle = "#FFF";
                 ctx.font = "bold 20px Arial";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
