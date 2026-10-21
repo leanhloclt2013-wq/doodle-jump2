@@ -384,20 +384,19 @@
                 announcement.y = 120;
                 announcement.alpha = 1.0;
                 announcement.scale = 1.2;
-                announcement.vx = -6; // Tốc độ lướt qua màn hình
+                announcement.vx = -6; 
             }
 
             // Hiệu ứng hoạt ảnh lướt qua chữ
             if (announcement.alpha > 0) {
                 announcement.x += announcement.vx;
-                announcement.alpha -= 0.012; // Mờ dần theo thời gian
+                announcement.alpha -= 0.012; 
                 if (announcement.alpha < 0) announcement.alpha = 0;
             }
 
             // Tốc độ tối đa chỉ được áp dụng khi đạt điểm 1500 trở lên
             let currentMoveSpeed = moveSpeed;
             if (score >= 1500) {
-                // Tăng tốc độ mạnh mẽ khi đạt mốc 1500 điểm
                 currentMoveSpeed = moveSpeed * 1.6; 
             }
 
@@ -561,40 +560,74 @@
             ctx.fillRect(sx, y - 3, 20, 3);
         }
 
-        // Vẽ Man Face
-        function drawManFace(x, y, w, h) {
+        // Vẽ khuôn mặt nhân vật (Thay đổi theo mốc 1000 điểm: Bình thường -> Giga Chad / Sigma)
+        function drawPlayerFace(x, y, w, h) {
             let cx = x + w / 2;
             let cy = y + h / 2;
 
-            ctx.fillStyle = "#FFEAA7";
-            ctx.strokeStyle = "#D63031";
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
+            let level = Math.floor(score / 1000);
 
-            ctx.strokeStyle = "#2D3436";
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.moveTo(cx - 12, cy - 8);
-            ctx.lineTo(cx - 3, cy - 14);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(cx + 3, cy - 14);
-            ctx.lineTo(cx + 12, cy - 8);
-            ctx.stroke();
+            if (level === 0) {
+                // 1. Khuôn mặt bình thường (Mặc định)
+                ctx.fillStyle = "#FFD1A9"; // Màu da
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
 
-            ctx.fillStyle = "#2D3436";
-            ctx.beginPath();
-            ctx.arc(cx - 7, cy - 3, 2.5, 0, Math.PI * 2);
-            ctx.arc(cx + 7, cy - 3, 2.5, 0, Math.PI * 2);
-            ctx.fill();
+                // Mắt
+                ctx.fillStyle = "#333";
+                ctx.fillRect(cx - 9, cy - 6, 4, 6);
+                ctx.fillRect(cx + 5, cy - 6, 4, 6);
 
-            ctx.beginPath();
-            ctx.lineWidth = 2;
-            ctx.arc(cx + 1, cy + 8, 10, 0.2, Math.PI - 0.2, false);
-            ctx.stroke();
+                // Miệng cười nhẹ
+                ctx.beginPath();
+                ctx.arc(cx, cy + 4, 6, 0, Math.PI, false);
+                ctx.stroke();
+
+            } else {
+                // 2. Khuôn mặt Giga Chad / Sigma (Cằm bạnh siêu ngầu, mặt nam tính góc cạnh)
+                ctx.fillStyle = "#E0AC69"; // Tông màu rám nắng giga chad
+                ctx.strokeStyle = "#2C1D0C";
+                ctx.lineWidth = 2;
+
+                // Cằm góc cạnh đặc trưng của Giga Chad
+                ctx.beginPath();
+                ctx.moveTo(cx - 16, cy - 14);
+                ctx.lineTo(cx + 16, cy - 14);
+                ctx.lineTo(cx + 18, cy + 4);
+                ctx.lineTo(cx + 10, cy + 20);
+                ctx.lineTo(cx - 10, cy + 20);
+                ctx.lineTo(cx - 18, cy + 4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Mắt híp siêu ngầu / tập trung (Sigma eyes)
+                ctx.strokeStyle = "#1A0F05";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(cx - 12, cy - 6);
+                ctx.lineTo(cx - 4, cy - 8);
+                ctx.moveTo(cx + 4, cy - 8);
+                ctx.lineTo(cx + 12, cy - 6);
+                ctx.stroke();
+
+                // Đường nét gò má & hàm bạnh nam tính
+                ctx.beginPath();
+                ctx.moveTo(cx - 14, cy + 4);
+                ctx.lineTo(cx, cy + 10);
+                ctx.lineTo(cx + 14, cy + 4);
+                ctx.stroke();
+
+                // Miệng hờ hững sigma
+                ctx.beginPath();
+                ctx.moveTo(cx - 5, cy + 14);
+                ctx.lineTo(cx + 5, cy + 14);
+                ctx.stroke();
+            }
         }
 
         // Loop vẽ đồ họa
@@ -641,7 +674,7 @@
                 });
 
                 // Vẽ nhân vật
-                drawManFace(player.x, player.y, player.width, player.height);
+                drawPlayerFace(player.x, player.y, player.width, player.height);
 
                 // Vẽ hoạt ảnh chữ lướt qua màn hình khi đạt mỗi mốc 1000 điểm
                 if (announcement.alpha > 0) {
