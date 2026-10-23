@@ -143,7 +143,7 @@
             <h2>CÀI ĐẶT</h2>
 
             <div class="setting-item">
-                <label for="sensitivitySlider">Độ nhạy (Tốc độ):</label>
+                <label for="sensitivitySlider">Độ nhạy gốc:</label>
                 <input type="range" id="sensitivitySlider" min="1.5" max="6" step="0.5" value="2.5">
             </div>
 
@@ -152,7 +152,6 @@
                 <input type="checkbox" id="musicToggle" checked>
             </div>
 
-            <!-- Thêm tùy chỉnh âm lượng to / nhỏ -->
             <div class="setting-item">
                 <label for="volumeSlider">Âm lượng nhạc:</label>
                 <input type="range" id="volumeSlider" min="0" max="0.1" step="0.01" value="0.04">
@@ -161,6 +160,7 @@
             <div class="guide-box">
                 <b>🎮 HƯỚNG DẪN CHƠI:</b><br>
                 • Di chuyển: Dùng phím <b>A / D</b> hoặc phím <b>Trái / Phải</b>.<br>
+                • Tốc độ: Tăng 10% mỗi 500 điểm (Tối đa +50%).<br>
                 • Khối cỏ thường: Nhảy bình thường.<br>
                 • Khối lò xo: Bật nhảy siêu cao.<br>
                 • Khối nứt: Sẽ gãy khi giẫm vào.<br>
@@ -199,14 +199,14 @@
 
         // Cấu hình game
         let gameState = 'MENU'; 
-        let moveSpeed = 2.5;
+        let baseMoveSpeed = 2.5;
         let isMusicEnabled = true;
-        let masterVolume = 0.04; // Âm lượng mặc định
+        let masterVolume = 0.04;
 
         let score = 0;
         let isGameOver = false;
 
-        // Quản lý mốc thông báo mỗi 1000 điểm & Khả năng Dừng màn hình (Freeze)
+        // Quản lý mốc thông báo mỗi 1000 điểm
         let lastMilestone = 0;
         let announcement = {
             text: "",
@@ -215,7 +215,7 @@
             alpha: 0,
             scale: 1,
             vx: 0,
-            pausedTimer: 0 // Đếm thời gian tạm dừng
+            pausedTimer: 0
         };
 
         const praiseMessages = ["GOOD!", "EXCELLENT!", "NICE!", "GREAT!", "AWESOME!", "SUPERB!"];
@@ -294,7 +294,6 @@
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(noteFreq, audioCtx.currentTime);
 
-                        // Sử dụng masterVolume từ Cài đặt
                         gainNode.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
                         gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.1);
 
@@ -390,9 +389,22 @@
             initPlatforms();
         }
 
+        // Tính toán Tỉ lệ tăng tốc độ theo điểm số
+        // Mỗi 500 điểm tăng 10% (+0.10 multiplier), tối đa 50% (+0.50)
+        function getSpeedMultiplier() {
+            let intervals = Math.floor(score / 500);
+            let speedBonus = intervals * 0.10;
+            if (speedBonus > 0.50) {
+                speedBonus = 0.50; // Giới hạn tối đa 50%
+            }
+            return 1 + speedBonus;
+        }
+
         // Cập nhật game
         function update() {
             if (gameState !== 'PLAYING' || isGameOver) return;
+
+            let multiplier = getSpeedMultiplier();
 
             // Kiểm tra mốc điểm 1000 để kích hoạt hoạt ảnh thông báo
             let currentMilestone = Math.floor(score / 1000) * 1000;
@@ -404,15 +416,14 @@
                 announcement.y = 120;
                 announcement.alpha = 1.0;
                 announcement.scale = 1.2;
-                announcement.vx = -7; 
+                announcement.vx = -7 * multiplier; 
                 announcement.pausedTimer = 0;
             }
 
-            // Xử lý hiệu ứng chữ chạy lướt và TẠM DỪNG MÀN HÌNH 0.75 Giây khi lướt tới giữa
+            // Xử lý hiệu ứng chữ chạy lướt và TẠM DỪNG MÀN HÌNH khi lướt tới giữa
             if (announcement.alpha > 0) {
-                let targetCenterX = 100; // Vị trí tâm lướt
+                let targetCenterX = 100;
                 if (announcement.x <= targetCenterX && announcement.pausedTimer < 45) { 
-                    // Tạm dừng 45 frame (~0.75 giây)
                     announcement.pausedTimer++;
                 } else {
                     announcement.x += announcement.vx;
@@ -421,10 +432,8 @@
                 }
             }
 
-            let currentMoveSpeed = moveSpeed;
-            if (score >= 1500) {
-                currentMoveSpeed = moveSpeed * 1.6; 
-            }
+            // Tốc độ di chuyển ngang tỉ lệ theo multiplier
+            let currentMoveSpeed = baseMoveSpeed * multiplier;
 
             if (keys["ArrowLeft"] || keys["KeyA"]) {
                 player.vx = -currentMoveSpeed;
@@ -438,7 +447,8 @@
             if (player.x > canvas.width) player.x = -player.width;
             if (player.x < -player.width) player.x = canvas.width;
 
-            player.vy += 0.22; 
+            // Trọng lực rơi nhân theo tốc độ game
+            player.vy += 0.22 * multiplier; 
             player.y += player.vy;
 
             if (player.y < canvas.height / 2) {
@@ -464,10 +474,10 @@
                             p.broken = true;
                             createParticles(p.x, p.y, "#8B5A2B");
                         } else if (p.type === 'spring') {
-                            player.vy = -13.0; 
+                            player.vy = -13.0 * multiplier; 
                             createParticles(p.x, p.y, "#FFD700");
                         } else {
-                            player.vy = -8.0; 
+                            player.vy = -8.0 * multiplier; 
                             createParticles(p.x, p.y, "#55FF55");
                         }
                     }
@@ -495,7 +505,7 @@
 
             // Cập nhật tuyết
             snowflakes.forEach(sf => {
-                sf.y += sf.speed;
+                sf.y += sf.speed * multiplier;
                 sf.x += sf.wind;
                 if (sf.y > canvas.height) {
                     sf.y = 0;
@@ -675,6 +685,14 @@
                 ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
                 ctx.shadowBlur = 4;
                 ctx.fillText("Điểm: " + score, 20, 35);
+
+                // Hiển thị chỉ số Tốc độ hiện tại (Speed Multiplier)
+                let currentBonusPct = Math.round((getSpeedMultiplier() - 1) * 100);
+                if (currentBonusPct > 0) {
+                    ctx.font = "bold 13px Arial";
+                    ctx.fillStyle = "#FFD700";
+                    ctx.fillText("⚡ Tốc độ: +" + currentBonusPct + "%" + (currentBonusPct >= 50 ? " (MAX)" : ""), 20, 55);
+                }
                 ctx.shadowBlur = 0;
 
                 if (isGameOver) {
@@ -715,9 +733,9 @@
         });
 
         btnBackSettings.addEventListener("click", () => {
-            moveSpeed = parseFloat(sensitivitySlider.value);
+            baseMoveSpeed = parseFloat(sensitivitySlider.value);
             isMusicEnabled = musicToggle.checked;
-            masterVolume = parseFloat(volumeSlider.value); // Lưu cài đặt âm lượng mới
+            masterVolume = parseFloat(volumeSlider.value);
 
             if (!isMusicEnabled) {
                 stopChillMusic();
