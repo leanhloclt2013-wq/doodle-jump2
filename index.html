@@ -148,8 +148,14 @@
             </div>
 
             <div class="setting-item">
-                <label for="musicToggle">Âm thanh (Nhạc chill):</label>
+                <label for="musicToggle">Bật Nhạc Chill:</label>
                 <input type="checkbox" id="musicToggle" checked>
+            </div>
+
+            <!-- Thêm tùy chỉnh âm lượng to / nhỏ -->
+            <div class="setting-item">
+                <label for="volumeSlider">Âm lượng nhạc:</label>
+                <input type="range" id="volumeSlider" min="0" max="0.1" step="0.01" value="0.04">
             </div>
 
             <div class="guide-box">
@@ -189,16 +195,18 @@
 
         const sensitivitySlider = document.getElementById("sensitivitySlider");
         const musicToggle = document.getElementById("musicToggle");
+        const volumeSlider = document.getElementById("volumeSlider");
 
-        // Cấu hình game (Giảm tốc độ xuống thấp hơn nữa: 2.5)
+        // Cấu hình game
         let gameState = 'MENU'; 
         let moveSpeed = 2.5;
         let isMusicEnabled = true;
+        let masterVolume = 0.04; // Âm lượng mặc định
 
         let score = 0;
         let isGameOver = false;
 
-        // Quản lý mốc thông báo mỗi 1000 điểm
+        // Quản lý mốc thông báo mỗi 1000 điểm & Khả năng Dừng màn hình (Freeze)
         let lastMilestone = 0;
         let announcement = {
             text: "",
@@ -206,7 +214,8 @@
             y: 0,
             alpha: 0,
             scale: 1,
-            vx: 0
+            vx: 0,
+            pausedTimer: 0 // Đếm thời gian tạm dừng
         };
 
         const praiseMessages = ["GOOD!", "EXCELLENT!", "NICE!", "GREAT!", "AWESOME!", "SUPERB!"];
@@ -255,11 +264,17 @@
             }
         }
 
-        // --- HỆ THỐNG ÂM THANH CHILL (Web Audio API) ---
+        // --- HỆ THỐNG ÂM THANH CHILL RETRO MOOD ---
         let audioCtx = null;
         let musicInterval = null;
-        let noteIndex = 0;
-        const chillNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 440.00, 392.00];
+        let noteStep = 0;
+
+        const chillChordSequence = [
+            [261.63, 329.63, 392.00], 
+            [220.00, 261.63, 329.63], 
+            [174.61, 220.00, 261.63], 
+            [196.00, 246.94, 293.66]  
+        ];
 
         function startChillMusic() {
             if (musicInterval || !isMusicEnabled) return;
@@ -270,25 +285,29 @@
             musicInterval = setInterval(() => {
                 if (gameState === 'PLAYING' && isMusicEnabled && audioCtx) {
                     try {
+                        let chord = chillChordSequence[Math.floor(noteStep / 2) % chillChordSequence.length];
+                        let noteFreq = chord[noteStep % chord.length];
+
                         let osc = audioCtx.createOscillator();
                         let gainNode = audioCtx.createGain();
 
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(chillNotes[noteIndex], audioCtx.currentTime);
-                        
-                        gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(noteFreq, audioCtx.currentTime);
+
+                        // Sử dụng masterVolume từ Cài đặt
+                        gainNode.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.1);
 
                         osc.connect(gainNode);
                         gainNode.connect(audioCtx.destination);
 
                         osc.start();
-                        osc.stop(audioCtx.currentTime + 1.2);
+                        osc.stop(audioCtx.currentTime + 1.1);
 
-                        noteIndex = (noteIndex + 1) % chillNotes.length;
+                        noteStep++;
                     } catch (e) {}
                 }
-            }, 600);
+            }, 550);
         }
 
         function stopChillMusic() {
@@ -362,6 +381,7 @@
             isGameOver = false;
             lastMilestone = 0;
             announcement.alpha = 0;
+            announcement.pausedTimer = 0;
             player.x = 218;
             player.y = 420;
             player.vx = 0;
@@ -384,17 +404,23 @@
                 announcement.y = 120;
                 announcement.alpha = 1.0;
                 announcement.scale = 1.2;
-                announcement.vx = -6; 
+                announcement.vx = -7; 
+                announcement.pausedTimer = 0;
             }
 
-            // Hiệu ứng hoạt ảnh lướt qua chữ
+            // Xử lý hiệu ứng chữ chạy lướt và TẠM DỪNG MÀN HÌNH 0.75 Giây khi lướt tới giữa
             if (announcement.alpha > 0) {
-                announcement.x += announcement.vx;
-                announcement.alpha -= 0.012; 
-                if (announcement.alpha < 0) announcement.alpha = 0;
+                let targetCenterX = 100; // Vị trí tâm lướt
+                if (announcement.x <= targetCenterX && announcement.pausedTimer < 45) { 
+                    // Tạm dừng 45 frame (~0.75 giây)
+                    announcement.pausedTimer++;
+                } else {
+                    announcement.x += announcement.vx;
+                    announcement.alpha -= 0.012; 
+                    if (announcement.alpha < 0) announcement.alpha = 0;
+                }
             }
 
-            // Tốc độ tối đa chỉ được áp dụng khi đạt điểm 1500 trở lên
             let currentMoveSpeed = moveSpeed;
             if (score >= 1500) {
                 currentMoveSpeed = moveSpeed * 1.6; 
@@ -560,86 +586,35 @@
             ctx.fillRect(sx, y - 3, 20, 3);
         }
 
-        // Vẽ khuôn mặt nhân vật (Thay đổi theo mốc 1000 điểm: Bình thường -> Giga Chad / Sigma)
+        // Vẽ khuôn mặt nhân vật
         function drawPlayerFace(x, y, w, h) {
             let cx = x + w / 2;
             let cy = y + h / 2;
 
-            let level = Math.floor(score / 1000);
+            ctx.fillStyle = "#FFD1A9"; 
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
 
-            if (level === 0) {
-                // 1. Khuôn mặt bình thường (Mặc định)
-                ctx.fillStyle = "#FFD1A9"; // Màu da
-                ctx.strokeStyle = "#333";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(cx, cy, w / 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
+            ctx.fillStyle = "#333";
+            ctx.fillRect(cx - 9, cy - 6, 4, 6);
+            ctx.fillRect(cx + 5, cy - 6, 4, 6);
 
-                // Mắt
-                ctx.fillStyle = "#333";
-                ctx.fillRect(cx - 9, cy - 6, 4, 6);
-                ctx.fillRect(cx + 5, cy - 6, 4, 6);
-
-                // Miệng cười nhẹ
-                ctx.beginPath();
-                ctx.arc(cx, cy + 4, 6, 0, Math.PI, false);
-                ctx.stroke();
-
-            } else {
-                // 2. Khuôn mặt Giga Chad / Sigma (Cằm bạnh siêu ngầu, mặt nam tính góc cạnh)
-                ctx.fillStyle = "#E0AC69"; // Tông màu rám nắng giga chad
-                ctx.strokeStyle = "#2C1D0C";
-                ctx.lineWidth = 2;
-
-                // Cằm góc cạnh đặc trưng của Giga Chad
-                ctx.beginPath();
-                ctx.moveTo(cx - 16, cy - 14);
-                ctx.lineTo(cx + 16, cy - 14);
-                ctx.lineTo(cx + 18, cy + 4);
-                ctx.lineTo(cx + 10, cy + 20);
-                ctx.lineTo(cx - 10, cy + 20);
-                ctx.lineTo(cx - 18, cy + 4);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                // Mắt híp siêu ngầu / tập trung (Sigma eyes)
-                ctx.strokeStyle = "#1A0F05";
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                ctx.moveTo(cx - 12, cy - 6);
-                ctx.lineTo(cx - 4, cy - 8);
-                ctx.moveTo(cx + 4, cy - 8);
-                ctx.lineTo(cx + 12, cy - 6);
-                ctx.stroke();
-
-                // Đường nét gò má & hàm bạnh nam tính
-                ctx.beginPath();
-                ctx.moveTo(cx - 14, cy + 4);
-                ctx.lineTo(cx, cy + 10);
-                ctx.lineTo(cx + 14, cy + 4);
-                ctx.stroke();
-
-                // Miệng hờ hững sigma
-                ctx.beginPath();
-                ctx.moveTo(cx - 5, cy + 14);
-                ctx.lineTo(cx + 5, cy + 14);
-                ctx.stroke();
-            }
+            ctx.beginPath();
+            ctx.arc(cx, cy + 4, 6, 0, Math.PI, false);
+            ctx.stroke();
         }
 
         // Loop vẽ đồ họa
         function draw() {
-            // Thay đổi màu nền tùy theo mốc 1000 điểm
             let level = Math.floor(score / 1000);
             if (level === 0) {
-                // Đầu game: Nền trắng tinh
                 ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             } else {
-                // Từ 1000 điểm trở lên: Đổi sang nền gradient
                 let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
                 grad.addColorStop(0, "#0984E3");
                 grad.addColorStop(0.5, "#6C5CE7");
@@ -648,7 +623,6 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // Tuyết rơi (chỉ hiển thị khi đã qua mốc 1000 điểm hoặc luôn hiển thị nhẹ)
             ctx.fillStyle = "rgba(200, 200, 200, 0.6)";
             snowflakes.forEach(sf => {
                 ctx.beginPath();
@@ -657,7 +631,6 @@
             });
 
             if (gameState === 'PLAYING') {
-                // Vẽ các loại thanh nhảy
                 platforms.forEach(p => {
                     if (p.broken) return;
 
@@ -674,7 +647,6 @@
                     }
                 });
 
-                // Vẽ các hạt Pixel
                 particles.forEach(pt => {
                     ctx.fillStyle = pt.color;
                     ctx.globalAlpha = pt.alpha;
@@ -682,10 +654,8 @@
                     ctx.globalAlpha = 1.0;
                 });
 
-                // Vẽ nhân vật
                 drawPlayerFace(player.x, player.y, player.width, player.height);
 
-                // Vẽ hoạt ảnh chữ lướt qua màn hình khi đạt mỗi mốc 1000 điểm
                 if (announcement.alpha > 0) {
                     ctx.save();
                     ctx.globalAlpha = announcement.alpha;
@@ -700,7 +670,6 @@
                     ctx.restore();
                 }
 
-                // Điểm số (đổi màu chữ đen nếu nền trắng để dễ nhìn)
                 ctx.fillStyle = level === 0 ? "#333" : "#FFF";
                 ctx.font = "bold 20px Arial";
                 ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
@@ -708,7 +677,6 @@
                 ctx.fillText("Điểm: " + score, 20, 35);
                 ctx.shadowBlur = 0;
 
-                // Game Over
                 if (isGameOver) {
                     ctx.fillStyle = "rgba(18, 24, 36, 0.85)";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -749,6 +717,8 @@
         btnBackSettings.addEventListener("click", () => {
             moveSpeed = parseFloat(sensitivitySlider.value);
             isMusicEnabled = musicToggle.checked;
+            masterVolume = parseFloat(volumeSlider.value); // Lưu cài đặt âm lượng mới
+
             if (!isMusicEnabled) {
                 stopChillMusic();
             }
